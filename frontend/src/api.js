@@ -19,33 +19,50 @@ export async function login(username, password) {
 
 // Сохраняем токены и роль в localStorage
 export function setTokens({ access, refresh, role }) {
-    // Сохраняем токены под основными ключами и поддерживаем старый формат
+    console.log('Saving tokens to localStorage:', { access: access?.substring(0, 20) + '...', role });
+    
+    // Сохраняем токены под основными ключами
     localStorage.setItem("access", access);
-    localStorage.setItem("access_token", access);
     localStorage.setItem("refresh", refresh);
-    localStorage.setItem("refresh_token", refresh);
     localStorage.setItem("role", role);
+    
+    // Для обратной совместимости сохраняем и под старыми ключами
+    localStorage.setItem("access_token", access);
+    localStorage.setItem("refresh_token", refresh);
+    
+    console.log('Tokens saved. Verifying:', localStorage.getItem('access')?.substring(0, 20) + '...');
 }
 
 // Получить токен
 export function getAccessToken() {
-    // Поддерживаем оба варианта ключа (новый и старый)
-    return localStorage.getItem("access") || localStorage.getItem("access_token");
+    const token = localStorage.getItem("access") || localStorage.getItem("access_token");
+    if (token) {
+        console.log('Token retrieved:', token.substring(0, 20) + '...');
+    } else {
+        console.warn('No token found in localStorage');
+    }
+    return token;
 }
 
 // Получить роль
 export function getUserRole() {
-    return localStorage.getItem("role");
+    const role = localStorage.getItem("role");
+    console.log('User role:', role);
+    return role;
 }
 
 // Выход
 export function logout() {
-    // Удаляем оба варианта ключей
+    console.log('Logging out, clearing tokens...');
+    
+    // Удаляем все варианты ключей
     localStorage.removeItem("access");
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("role");
+    
+    console.log('Tokens cleared');
 }
 
 // Получить список пациентов (для доктора)

@@ -15,17 +15,18 @@ urlpatterns = [
 
     # ===== Patients =====
     path('api/patients/', patient_views.PatientListView.as_view(), name='patients_list'),
-    path('api/patients/<int:pk>/', patient_views.PatientDetailView.as_view(), name='patients_detail'),
     path('api/patients/me/', patient_views.MyPatientView.as_view(), name='my_patient'),
     path('api/patients/check_unique/', patient_views.PatientUniqueCheckView.as_view(), name='patient_check_unique'),
+    path('api/patients/<int:pk>/', patient_views.PatientDetailView.as_view(), name='patients_detail'),
+
 
     # ===== Doctors =====
     path('api/doctors/', patient_views.DoctorListView.as_view(), name='doctors_list'),
     path('api/doctors/<int:pk>/', patient_views.DoctorDetailView.as_view(), name='doctors_detail'),
-    path('api/doctors/my/', patient_views.MyDoctorView.as_view(), name='my_doctor'),
-    path('api/doctors/me/', patient_views.doctor_profile_view, name='doctor-profile'),
+    # ВАЖНО: /doctors/me/ должен быть ПЕРЕД /doctors/<int:pk>/
+    path('api/doctors/me/', patient_views.MyDoctorView.as_view(), name='my_doctor'),
+    path('api/doctors/my/', patient_views.MyDoctorView.as_view(), name='my_doctor_alt'),
     
-
     # ===== Medicines =====
     path('api/medicines/', patient_views.MedicineListView.as_view(), name='medicines_list'),
     path('api/medicines/<int:pk>/', patient_views.MedicineDetailView.as_view(), name='medicines_detail'),

@@ -50,9 +50,10 @@ class Doctor(models.Model):
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)
     birth_date = models.DateField()
+    iin = models.CharField(max_length=12, unique=True)  # ДОБАВЛЕНО: ИИН врача
     specialty = models.CharField(max_length=200)
     experience_years = models.PositiveIntegerField()
-    work_phone = models.CharField(max_length=20)
+    work_phone = models.CharField(max_length=20)  # Сделаем обязательным
     license_number = models.CharField(max_length=50, blank=True, null=True)
     department = models.CharField(max_length=100, blank=True, null=True)
     working_hours = models.CharField(max_length=100, blank=True, null=True)

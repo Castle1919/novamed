@@ -89,7 +89,7 @@ function App() {
 						<Typography variant="h6">
 							<img src={logo} className='logo' alt="" />
 						</Typography>
-						<h2 className='logoName'>Patient Registration</h2>
+						<h2 className='logoName'>NovaMed</h2>
 					</NavLink>
 				</div>
 				<div className='header-right'>

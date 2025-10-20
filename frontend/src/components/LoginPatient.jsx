@@ -8,7 +8,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { NavLink } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Formik, Field, Form } from 'formik';
 import * as yup from 'yup';
 import axios from '../api/axios';
@@ -30,15 +30,9 @@ const style = {
 };
 
 function Login({ onClose }) {
-	const [open, setOpen] = useState(false);
+	const navigate = useNavigate();
 	const [showPassword, setShowPassword] = useState(false);
 	const [error, setError] = useState('');
-
-	const handleOpen = () => setOpen(true);
-	const handleClose = () => {
-		setOpen(false);
-		onClose();
-	};
 
 	const validationSchema = yup.object().shape({
 		email: yup.string().email('Неверный формат email').required('Обязательное поле'),
@@ -52,61 +46,90 @@ function Login({ onClose }) {
 
 	const onSubmit = async (values, { setSubmitting }) => {
 		setError('');
+		setSubmitting(true);
+
 		try {
 			const response = await axios.post('/accounts/login/', {
 				username: values.email,
 				email: values.email,
 				password: values.password,
 			});
-			// Сохраняем токены в том же формате, что и общие методы API
+
+			// Декодируем payload токена для получения роли
 			try {
 				const payload = JSON.parse(atob(response.data.access.split('.')[1]));
-				setTokens({ access: response.data.access, refresh: response.data.refresh, role: payload.role });
-				// Устанавливаем заголовок для текущего экземпляра axios (интерцептор также добавит токен автоматически)
+				const role = payload.role || 'user';
+				
+				// Сохраняем токены
+				setTokens({ 
+					access: response.data.access, 
+					refresh: response.data.refresh, 
+					role: role 
+				});
+
+				// Устанавливаем заголовок Authorization для axios
 				axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+
+				// Закрываем модальное окно
+				if (onClose) onClose();
+
+				// Редирект в зависимости от роли
+				if (role === 'patient') {
+					navigate('/patient/main');
+				} else if (role === 'doctor') {
+					navigate('/doctor/main');
+				} else {
+					navigate('/');
+				}
+				
+				// Перезагружаем страницу для обновления состояния
+				window.location.reload();
+				
 			} catch (e) {
-				// Если декодирование упало — всё равно сохраним токены под стандартными ключами (role=null)
-				setTokens({ access: response.data.access, refresh: response.data.refresh, role: null });
+				console.error('Error decoding token:', e);
+				setError('Ошибка при обработке токена');
 			}
-			handleOpen();
+
 		} catch (err) {
-			const msg = err.response?.data || err.message || 'Ошибка входа';
+			const msg = err.response?.data?.detail || err.response?.data || err.message || 'Ошибка входа';
 			setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
 			console.error('Login error:', err.response?.status, err.response?.data, err.message);
 		}
+
 		setSubmitting(false);
 	};
 
 	return (
-		<>
-			{/* Успешный вход */}
-			<Modal open={open} aria-labelledby="child-modal-title">
-				<Box sx={{ ...style, width: 300 }}>
-					<h2 id="child-modal-title">Вы успешно зашли!</h2>
-					<p>Используйте страницу с умом.</p>
-					<Button onClick={handleClose}>
-						<NavLink to="/patient/main" className="for-navs2">Закрыть</NavLink>
-					</Button>
-				</Box>
-			</Modal>
+		<Modal open={true} onClose={onClose} aria-labelledby="patient-login-modal-title">
+			<Box sx={{ ...style, width: 400 }}>
+				<h2 id="patient-login-modal-title">Вход</h2>
 
-			{/* Форма входа */}
-			<Modal open={true} onClose={onClose} aria-labelledby="parent-modal-title">
-				<Box sx={{ ...style, width: 400 }}>
-					<h2 id="parent-modal-title">Вход</h2>
-					<Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={onSubmit}>
+				{error && (
+					<div style={{ 
+						color: '#d32f2f', 
+						backgroundColor: '#ffebee', 
+						padding: '10px', 
+						borderRadius: '4px',
+						marginBottom: '16px'
+					}}>
+						{error}
+					</div>
+				)}
+
+				<Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={onSubmit}>
+					{({ isSubmitting }) => (
 						<Form className="reg-form">
 							<div className="reg-form-inps">
 								<Field name="email">
 									{({ field, meta }) => (
 										<TextField
 											{...field}
-											id="outlined-basic2"
 											label="Почта"
 											variant="outlined"
 											className="reg-form-inp"
 											error={meta.touched && Boolean(meta.error)}
 											helperText={meta.touched ? meta.error : ''}
+											disabled={isSubmitting}
 										/>
 									)}
 								</Field>
@@ -117,13 +140,13 @@ function Login({ onClose }) {
 									{({ field, meta }) => (
 										<TextField
 											{...field}
-											id="outlined-basic3"
 											label="Пароль"
 											variant="outlined"
 											type={showPassword ? 'text' : 'password'}
 											className="reg-form-inp"
-											error={(meta.touched && Boolean(meta.error)) || Boolean(error)}
-											helperText={meta.touched ? meta.error : error}
+											error={meta.touched && Boolean(meta.error)}
+											helperText={meta.touched ? meta.error : ''}
+											disabled={isSubmitting}
 											InputProps={{
 												endAdornment: (
 													<InputAdornment position="end">
@@ -131,6 +154,7 @@ function Login({ onClose }) {
 															aria-label="toggle password visibility"
 															onClick={() => setShowPassword(!showPassword)}
 															edge="end"
+															disabled={isSubmitting}
 														>
 															{showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
 														</IconButton>
@@ -142,14 +166,19 @@ function Login({ onClose }) {
 								</Field>
 							</div>
 
-							<Button type="submit" variant="contained" id="extForRegistr">
-								Войти
+							<Button 
+								type="submit" 
+								variant="contained" 
+								id="extForRegistr"
+								disabled={isSubmitting}
+							>
+								{isSubmitting ? 'Вход...' : 'Войти'}
 							</Button>
 						</Form>
-					</Formik>
-				</Box>
-			</Modal>
-		</>
+					)}
+				</Formik>
+			</Box>
+		</Modal>
 	);
 }
 

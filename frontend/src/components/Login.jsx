@@ -8,13 +8,11 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { Formik, Field, Form, ErrorMessage } from 'formik';
+import { Formik, Field, Form } from 'formik';
 import axios from '../api/axios';
 import { setTokens } from '../api';
 import * as yup from 'yup';
-import { NavLink } from "react-router-dom";
-// import { useSelector, useDispatch } from 'react-redux'
-// import { setImage } from '../components/ModalSlice'
+import { useNavigate } from "react-router-dom";
 
 const style = {
     position: 'absolute',
@@ -32,17 +30,9 @@ const style = {
 };
 
 function Login({ onClose }) {
-    // const dispatch = useDispatch()
-    const [open, setOpen] = useState(false);
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
-
-    const handleOpen = () => {
-        setOpen(true);
-    };
-    const handleClose = () => {
-        setOpen(false);
-        onClose()
-    };
+    const [error, setError] = useState('');
 
     const validationSchema = yup.object().shape({
         email: yup.string().email('Неверный формат email').required('Обязательное поле'),
@@ -56,93 +46,115 @@ function Login({ onClose }) {
 
     const onSubmit = async (values, { setSubmitting }) => {
         setSubmitting(true);
+        setError('');
+        
         try {
-            // backend expects 'username' for TokenObtainPairSerializer
             const response = await axios.post('/accounts/login/', {
                 username: values.email,
                 email: values.email,
                 password: values.password,
             });
 
+            // Декодируем payload токена для получения роли
             try {
                 const payload = JSON.parse(atob(response.data.access.split('.')[1]));
-                setTokens({ access: response.data.access, refresh: response.data.refresh, role: payload.role });
+                const role = payload.role || 'user';
+                
+                // Сохраняем токены
+                setTokens({ 
+                    access: response.data.access, 
+                    refresh: response.data.refresh, 
+                    role: role 
+                });
+
+                // Устанавливаем заголовок Authorization для axios
                 axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.access}`;
+
+                // Закрываем модальное окно
+                if (onClose) onClose();
+
+                // Редирект в зависимости от роли
+                if (role === 'doctor') {
+                    navigate('/doctor/main');
+                } else if (role === 'patient') {
+                    navigate('/patient/main');
+                } else {
+                    navigate('/');
+                }
+                
+                // Перезагружаем страницу для обновления состояния
+                window.location.reload();
+                
             } catch (e) {
-                setTokens({ access: response.data.access, refresh: response.data.refresh, role: null });
+                console.error('Error decoding token:', e);
+                setError('Ошибка при обработке токена');
             }
 
-            handleOpen();
         } catch (err) {
-            const msg = err.response?.data || err.message || 'Ошибка входа';
+            const msg = err.response?.data?.detail || err.response?.data || err.message || 'Ошибка входа';
             console.error('Login error:', err.response?.status, err.response?.data, err.message);
-            alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+            setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
         }
 
         setSubmitting(false);
     };
 
     return (
-        <>
-            <Modal
-                open={open}
-                aria-labelledby="child-modal-title"
-                aria-describedby="child-modal-description"
-            >
-                <Box sx={{ ...style, width: 300 }}>
-                    <h2 id="child-modal-title">Вы успешно зашли!</h2>
-                    <p id="child-modal-description">
-                        Используйте страницу с умом.
-                    </p>
-                    <Button onClick={handleClose}><NavLink to="/doctor/main" className='for-navs2'>Закрыть</NavLink></Button>
-                </Box>
-            </Modal>
+        <Modal
+            open={true}
+            onClose={onClose}
+            aria-labelledby="login-modal-title"
+        >
+            <Box sx={{ ...style, width: 400 }}>
+                <h2 id="login-modal-title">Вход</h2>
+                
+                {error && (
+                    <div style={{ 
+                        color: '#d32f2f', 
+                        backgroundColor: '#ffebee', 
+                        padding: '10px', 
+                        borderRadius: '4px',
+                        marginBottom: '16px'
+                    }}>
+                        {error}
+                    </div>
+                )}
 
-            <Modal
-                open={true}
-                onClose={onClose}
-                aria-labelledby="child-modal-title"
-                aria-describedby="child-modal-description"
-            >
-                <Box sx={{ ...style, width: 400 }}>
-                    <h2 id="parent-modal-title">Вход</h2>
-                    <Formik
-                        initialValues={initialValues}
-                        validationSchema={validationSchema}
-                        onSubmit={onSubmit}
-                    >
+                <Formik
+                    initialValues={initialValues}
+                    validationSchema={validationSchema}
+                    onSubmit={onSubmit}
+                >
+                    {({ isSubmitting }) => (
                         <Form className='reg-form'>
                             <div className='reg-form-inps'>
-                                <Field
-                                    name="email"
-                                    render={({ field, meta }) => (
+                                <Field name="email">
+                                    {({ field, meta }) => (
                                         <TextField
                                             {...field}
-                                            id="outlined-basic2"
                                             label="Почта"
                                             variant="outlined"
                                             className='reg-form-inp'
                                             error={meta.touched && Boolean(meta.error)}
                                             helperText={meta.touched ? meta.error : ''}
+                                            disabled={isSubmitting}
                                         />
                                     )}
-                                />
-                                {/* <ErrorMessage name="email" component="div" className='reg-form-error' /> */}
+                                </Field>
                             </div>
 
                             <div className='reg-form-inps'>
-                                <Field
-                                    name="password"
-                                    render={({ field, meta }) => (
+                                <Field name="password">
+                                    {({ field, meta }) => (
                                         <TextField
                                             {...field}
-                                            id="outlined-basic3"
                                             label="Пароль"
                                             variant="outlined"
                                             type={showPassword ? 'text' : 'password'}
                                             className='reg-form-inp'
                                             error={meta.touched && Boolean(meta.error)}
                                             helperText={meta.touched ? meta.error : ''}
+                                            disabled={isSubmitting}
                                             InputProps={{
                                                 endAdornment: (
                                                     <InputAdornment position="end">
@@ -150,6 +162,7 @@ function Login({ onClose }) {
                                                             aria-label="toggle password visibility"
                                                             onClick={() => setShowPassword(!showPassword)}
                                                             edge="end"
+                                                            disabled={isSubmitting}
                                                         >
                                                             {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                                                         </IconButton>
@@ -158,15 +171,22 @@ function Login({ onClose }) {
                                             }}
                                         />
                                     )}
-                                />
-                                {/* <ErrorMessage name="password" component="div" className='reg-form-error' /> */}
+                                </Field>
                             </div>
-                            <Button type='submit' variant="contained" id='extForRegistr'>Войти</Button>
+
+                            <Button 
+                                type='submit' 
+                                variant="contained" 
+                                id='extForRegistr'
+                                disabled={isSubmitting}
+                            >
+                                {isSubmitting ? 'Вход...' : 'Войти'}
+                            </Button>
                         </Form>
-                    </Formik>
-                </Box>
-            </Modal>
-        </>
+                    )}
+                </Formik>
+            </Box>
+        </Modal>
     );
 }
 
