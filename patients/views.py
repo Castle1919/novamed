@@ -2,6 +2,8 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 
 from .models import Patient, Doctor, Medicine, Appointment
 from .serializers import (
@@ -10,8 +12,7 @@ from .serializers import (
     MedicineSerializer,
     AppointmentSerializer
 )
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+
 
 # ===== CUSTOM PERMISSIONS =====
 class IsDoctorUser(permissions.BasePermission):
@@ -60,7 +61,7 @@ class MyPatientView(generics.RetrieveUpdateAPIView):
         try:
             return Patient.objects.get(user=self.request.user)
         except Patient.DoesNotExist:
-            raise NotFound("Пациент не найден для текущего пользователя")
+            raise NotFound("Профиль пациента не найден для текущего пользователя")
 
 
 class PatientMeView(APIView):
@@ -81,8 +82,21 @@ class DoctorListView(generics.ListCreateAPIView):
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        """
+        Любой аутентифицированный пользователь может видеть список врачей.
+        """
+        return Doctor.objects.all()
+
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        """
+        Только врач может создать профиль.
+        """
+        user = self.request.user
+        if not getattr(user, 'is_doctor', False):
+            raise PermissionDenied("Только врач может создавать профиль врача")
+        serializer.save(user=user)
+
 
 
 class DoctorDetailView(generics.RetrieveAPIView):
@@ -94,38 +108,84 @@ class DoctorDetailView(generics.RetrieveAPIView):
 class MyDoctorView(generics.RetrieveUpdateAPIView):
     """
     Получить или обновить профиль текущего врача.
-    Если профиль отсутствует — вернуть 404 (без создания автоматически).
+    GET - получить профиль
+    PUT/PATCH - обновить профиль
+    POST (через perform_create) - создать профиль, если его нет
     """
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         user = self.request.user
+        
+        # Проверяем, что пользователь - врач
         if not getattr(user, 'is_doctor', False):
-            raise PermissionDenied("Текущий пользователь не является врачом.")
+            raise PermissionDenied("Текущий пользователь не является врачом")
+        
         try:
             return Doctor.objects.get(user=user)
         except Doctor.DoesNotExist:
-            raise NotFound("Профиль врача не найден. Создайте его вручную.")
+            # Возвращаем 404, фронтенд обработает это и предложит создать профиль
+            raise NotFound("Профиль врача не найден")
 
     def get(self, request, *args, **kwargs):
-        doctor = self.get_object()
-        serializer = self.get_serializer(doctor)
-        return Response(serializer.data)
-
-    def patch(self, request, *args, **kwargs):
-        doctor = self.get_object()
-        serializer = self.get_serializer(doctor, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        """GET запрос - получить профиль врача"""
+        try:
+            doctor = self.get_object()
+            serializer = self.get_serializer(doctor)
+            return Response(serializer.data)
+        except NotFound as e:
+            return Response(
+                {"detail": str(e)}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
     def put(self, request, *args, **kwargs):
-        doctor = self.get_object()
-        serializer = self.get_serializer(doctor, data=request.data)
+        """PUT запрос - обновить или создать профиль"""
+        user = request.user
+        
+        if not getattr(user, 'is_doctor', False):
+            return Response(
+                {"detail": "Текущий пользователь не является врачом"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            # Пытаемся найти существующий профиль
+            doctor = Doctor.objects.get(user=user)
+            serializer = self.get_serializer(doctor, data=request.data)
+        except Doctor.DoesNotExist:
+            # Если профиля нет - создаем новый
+            serializer = self.get_serializer(data=request.data)
+        
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
+        
+        # Сохраняем с привязкой к пользователю
+        doctor = serializer.save(user=user)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, *args, **kwargs):
+        """PATCH запрос - частичное обновление или создание"""
+        user = request.user
+        
+        if not getattr(user, 'is_doctor', False):
+            return Response(
+                {"detail": "Текущий пользователь не является врачом"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            doctor = Doctor.objects.get(user=user)
+            serializer = self.get_serializer(doctor, data=request.data, partial=True)
+        except Doctor.DoesNotExist:
+            # При частичном обновлении, если профиля нет - создаем с переданными данными
+            serializer = self.get_serializer(data=request.data)
+        
+        serializer.is_valid(raise_exception=True)
+        doctor = serializer.save(user=user)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class DoctorMeView(APIView):
@@ -183,24 +243,49 @@ class PatientUniqueCheckView(generics.GenericAPIView):
         return Response({'detail': 'Укажите параметр iin или phone'}, status=400)
 
 
-@api_view(['GET', 'PUT'])
+@api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def doctor_profile_view(request):
     """
     Получение и обновление профиля доктора (по текущему пользователю)
+    GET - получить профиль
+    PUT - полное обновление или создание
+    PATCH - частичное обновление или создание
     """
-    try:
-        doctor = Doctor.objects.get(user=request.user)
-    except Doctor.DoesNotExist:
-        return Response({"detail": "Доктор не найден"}, status=status.HTTP_404_NOT_FOUND)
-
+    user = request.user
+    
+    # Проверяем, что пользователь - врач
+    if not getattr(user, 'is_doctor', False):
+        return Response(
+            {"detail": "Текущий пользователь не является врачом"}, 
+            status=status.HTTP_403_FORBIDDEN
+        )
+    
     if request.method == 'GET':
-        serializer = DoctorSerializer(doctor)
-        return Response(serializer.data)
-
-    elif request.method == 'PUT':
-        serializer = DoctorSerializer(doctor, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        try:
+            doctor = Doctor.objects.get(user=user)
+            serializer = DoctorSerializer(doctor)
             return Response(serializer.data)
+        except Doctor.DoesNotExist:
+            return Response(
+                {"detail": "Профиль врача не найден"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    elif request.method in ['PUT', 'PATCH']:
+        try:
+            doctor = Doctor.objects.get(user=user)
+            serializer = DoctorSerializer(
+                doctor, 
+                data=request.data, 
+                partial=(request.method == 'PATCH')
+            )
+        except Doctor.DoesNotExist:
+            # Создаем новый профиль
+            serializer = DoctorSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save(user=user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
