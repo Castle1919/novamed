@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Patient, Doctor, Appointment, Medicine
+from .models import Patient, Doctor, Appointment, Medicine, MedicalRecord, Prescription, DoctorNote, DiagnosisTemplate, PatientFile
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
@@ -21,3 +21,13 @@ class AppointmentAdmin(admin.ModelAdmin):
 class MedicineAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'description')
     search_fields = ('name',)
+
+admin.site.site_header = "NovaMed — Администрирование"
+admin.site.site_title = "NovaMed Admin"
+admin.site.index_title = "Панель управления"
+
+admin.site.register(MedicalRecord)
+admin.site.register(Prescription)
+admin.site.register(DoctorNote)
+admin.site.register(DiagnosisTemplate)
+admin.site.register(PatientFile)

@@ -187,6 +187,9 @@ export default function MainPatientMain() {
 					<NavLink to="/patient/main/allowance" className="for-navs">
 						<ColorButton variant="contained">Доступные лекарства</ColorButton>
 					</NavLink>
+					<NavLink to="/patient/main/appointments" className="for-navs">
+						<ColorButton variant="contained">Мои записи</ColorButton>
+					</NavLink>
 				</div>
 
 				<div className="cont-for-patients-view">

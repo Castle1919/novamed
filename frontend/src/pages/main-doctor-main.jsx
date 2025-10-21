@@ -186,7 +186,7 @@ export default function MainDoctorMain() {
 					</NavLink>
 				</div>
 				<div className='cont-for-patients-view'>
-					<Outlet />
+					<Outlet context={{profile}}/>
 				</div>
 			</div>
 

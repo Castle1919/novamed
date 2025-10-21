@@ -189,8 +189,8 @@
 	width: 80%;
 	height: 50vh;
 	display: flex;
-	justify-content: center;
-	align-items: center;
+	justify-content: flex-start;
+	align-items: stretch;
 	text-decoration: none;
 	background-color: #f8f8f8;
 	padding: 30px;
@@ -199,7 +199,6 @@
 	-moz-box-shadow: 4px 4px 90px 30px rgba(24, 118, 191, 0.2);
 	box-shadow: 4px 4px 90px 30px rgba(24, 118, 191, 0.2);
 	transition: .5s;
-	/* margin-top: 80px; */
 }
 .nav-link-main-main {
 	display: flex;

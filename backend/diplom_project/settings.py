@@ -6,6 +6,9 @@ from datetime import timedelta
 # BASE_DIR = Path(__file__).resolve().parent.parent
 # BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+USE_TZ = True  
+TIME_ZONE = 'Etc/GMT-5'
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_BUILD_DIR = BASE_DIR / 'frontend' / 'build'
 

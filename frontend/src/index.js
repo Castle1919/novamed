@@ -22,6 +22,7 @@ import MainPatientMainDefault from './components/MainPatientMainDefault';
 import MainPatientMainPatients from './components/MainPatientMainPatients';
 import MainPatientMainDoctors from './components/MainPatientMainDoctors';
 import MainPatientMainAllowance from './components/MainPatientMainAllowance';
+import MainPatientMainAppointments from './components/MainPatientMainAppointments'; // ДОБАВЛЕНО
 import PatientProfilePage from './pages/patient-profile';
 import DoctorProfilePage from './pages/doctor-profile';
 
@@ -46,29 +47,27 @@ const router = createBrowserRouter([
 				element: <MainDoctorMainDefault />,
 			},
 			{
-				path: '/doctor/main/patients',
+				path: 'patients', // Относительный путь (лучше так)
 				element: <MainDoctorMainPatients />,
 				errorElement: <ErrorPage />,
-				children: [
-					{
-						path: '/doctor/main/patients/:id',
-						element: <MainDoctorMain />,
-						errorElement: <ErrorPage />,
-					},
-				],
 			},
 			{
-				path: '/doctor/main/history',
+				path: 'patients/:id', // Относительный путь
+				element: <MainDoctorMain />,
+				errorElement: <ErrorPage />,
+			},
+			{
+				path: 'history', // Относительный путь
 				element: <MainDoctorMainHistory />,
 				errorElement: <ErrorPage />,
 			},
 			{
-				path: '/doctor/main/accounting',
+				path: 'accounting', // Относительный путь
 				element: <MainDoctorMainAccounting />,
 				errorElement: <ErrorPage />,
 			},
 			{
-				path: '/doctor/main/profile',
+				path: 'profile', // Относительный путь
 				element: <DoctorProfilePage />,
 				errorElement: <ErrorPage />,
 			},
@@ -89,24 +88,27 @@ const router = createBrowserRouter([
 				element: <MainPatientMainDefault />,
 			},
 			{
-				path: '/patient/main/doctors',
+				path: 'doctors', // Относительный путь
 				element: <MainPatientMainDoctors />,
 				errorElement: <ErrorPage />,
-				children: [
-					{
-						path: '/patient/main/doctors/:id',
-						element: <MainPatientMain />,
-						errorElement: <ErrorPage />,
-					},
-				],
 			},
 			{
-				path: '/patient/main/allowance',
+				path: 'doctors/:id', // Относительный путь
+				element: <MainPatientMain />,
+				errorElement: <ErrorPage />,
+			},
+			{
+				path: 'appointments', // ДОБАВЛЕНО - маршрут для "Мои записи"
+				element: <MainPatientMainAppointments />,
+				errorElement: <ErrorPage />,
+			},
+			{
+				path: 'allowance', // Относительный путь
 				element: <MainPatientMainAllowance />,
 				errorElement: <ErrorPage />,
 			},
 			{
-				path: '/patient/main/profile',
+				path: 'profile', // Относительный путь
 				element: <PatientProfilePage />,
 				errorElement: <ErrorPage />,
 			},
