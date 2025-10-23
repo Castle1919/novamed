@@ -116,6 +116,7 @@ class Appointment(models.Model):
         local_time = timezone.localtime(self.date_time)
         return f'{self.patient.last_name} {self.patient.first_name} - Dr. {self.doctor.last_name} {self.doctor.first_name} - {local_time.strftime("%Y-%m-%d %H:%M")}'
     
+
 class MedicalRecord(models.Model):
     """
     Медицинская запись (результат приема)
@@ -238,3 +239,28 @@ class PatientFile(models.Model):
     
     def __str__(self):
         return f'{self.get_file_type_display()} - {self.title}'
+    
+class PatientActiveMedicine(models.Model):
+    """
+    Модель для хранения активных назначений препаратов для пациента от конкретного врача.
+    """
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='active_medicines', verbose_name='Пациент')
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='active_medicines', verbose_name='Врач')
+    medicine = models.ForeignKey(Medicine, on_delete=models.CASCADE, verbose_name='Препарат')
+    
+    dosage = models.CharField(max_length=100, blank=True, default='', verbose_name='Дозировка')
+    frequency = models.CharField(max_length=100, blank=True, default='', verbose_name='Частота')
+    duration = models.CharField(max_length=100, blank=True, default='', verbose_name='Длительность')
+    instructions = models.TextField(blank=True, default='', verbose_name='Указания')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        verbose_name = 'Активный препарат пациента'
+        verbose_name_plural = 'Активные препараты пациента'
+        # Гарантирует, что один врач не может назначить одно и то же лекарство одному пациенту дважды
+        unique_together = ('patient', 'doctor', 'medicine')
+
+    def __str__(self):
+        return f'{self.patient} — {self.medicine.name} (назначил Dr. {self.doctor.last_name})'

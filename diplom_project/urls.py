@@ -19,9 +19,8 @@ urlpatterns = [
     path('api/patients/check_unique/', patient_views.PatientUniqueCheckView.as_view(), name='patient_check_unique'),
     path('api/patients/<int:patient_id>/history/', patient_views.PatientMedicalHistoryView.as_view(), name='patient_history'),
     path('api/patients/<int:patient_id>/files/upload/', patient_views.PatientFileUploadView.as_view(), name='upload_file'),
-
-
-
+    path('api/patients/active-medicines/', patient_views.PatientActiveMedicinesListView.as_view(), name='patient_active_medicines'),
+    path('api/patients/active-medicines/sync/', patient_views.PatientActiveMedicinesSyncView.as_view(), name='active_medicines_sync'),
     # ===== Doctors =====
     path('api/doctors/', patient_views.DoctorListView.as_view(), name='doctors_list'),
     path('api/doctors/<int:pk>/', patient_views.DoctorDetailView.as_view(), name='doctors_detail'),
@@ -36,6 +35,7 @@ urlpatterns = [
     path('api/medicines/', patient_views.MedicineListView.as_view(), name='medicines_list'),
     path('api/medicines/<int:pk>/', patient_views.MedicineDetailView.as_view(), name='medicines_detail'),
     path('api/medicines/list/', patient_views.MedicineListView.as_view(), name='medicines_list_all'),
+    
 
 
     # ===== Appointments =====
