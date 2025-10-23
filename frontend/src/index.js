@@ -19,19 +19,20 @@ import MainDoctorMainHistory from './components/MainDoctorMainHistory';
 import MainDoctorMainAccounting from './components/MainDoctorMainAccounting';
 import MainDoctorMainDefault from './components/MainDoctorMainDefault';
 import MainPatientMainDefault from './components/MainPatientMainDefault';
-import MainPatientMainPatients from './components/MainPatientMainPatients';
 import MainPatientMainDoctors from './components/MainPatientMainDoctors';
 import MainPatientMainAllowance from './components/MainPatientMainAllowance';
 import MainPatientMainAppointments from './components/MainPatientMainAppointments';
-import PatientProfilePage from './pages/patient-profile';
-import DoctorProfilePage from './pages/doctor-profile';
 import ActivationPage from './pages/ActivationPage';
-
 
 const router = createBrowserRouter([
 	{
 		path: '/',
 		element: <App />,
+		errorElement: <ErrorPage />,
+	},
+	{
+		path: '/activate/:uid/:token',
+		element: <ActivationPage />,
 		errorElement: <ErrorPage />,
 	},
 	{
@@ -49,30 +50,18 @@ const router = createBrowserRouter([
 				element: <MainDoctorMainDefault />,
 			},
 			{
-				path: 'patients', // Относительный путь (лучше так)
+				path: 'patients', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
 				element: <MainDoctorMainPatients />,
-				errorElement: <ErrorPage />,
 			},
 			{
-				path: 'patients/:id', // Относительный путь
-				element: <MainDoctorMain />,
-				errorElement: <ErrorPage />,
-			},
-			{
-				path: 'history', // Относительный путь
+				path: 'history', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
 				element: <MainDoctorMainHistory />,
-				errorElement: <ErrorPage />,
 			},
 			{
-				path: 'accounting', // Относительный путь
+				path: 'accounting', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
 				element: <MainDoctorMainAccounting />,
-				errorElement: <ErrorPage />,
 			},
-			{
-				path: 'profile', // Относительный путь
-				element: <DoctorProfilePage />,
-				errorElement: <ErrorPage />,
-			},
+			// Маршрут 'profile' УДАЛЕН, т.к. используется модалка
 		],
 	},
 	{
@@ -90,36 +79,19 @@ const router = createBrowserRouter([
 				element: <MainPatientMainDefault />,
 			},
 			{
-				path: 'doctors', // Относительный путь
+				path: 'doctors', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
 				element: <MainPatientMainDoctors />,
-				errorElement: <ErrorPage />,
 			},
 			{
-				path: 'doctors/:id', // Относительный путь
-				element: <MainPatientMain />,
-				errorElement: <ErrorPage />,
-			},
-			{
-				path: 'appointments', // ДОБАВЛЕНО - маршрут для "Мои записи"
+				path: 'appointments', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
 				element: <MainPatientMainAppointments />,
-				errorElement: <ErrorPage />,
 			},
 			{
-				path: 'allowance', // Относительный путь
+				path: 'allowance', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
 				element: <MainPatientMainAllowance />,
-				errorElement: <ErrorPage />,
 			},
-			{
-				path: 'profile', // Относительный путь
-				element: <PatientProfilePage />,
-				errorElement: <ErrorPage />,
-			},
+			// Маршрут 'profile' УДАЛЕН, т.к. используется модалка
 		],
-		
-	},
-	{
-		path: '/activate/:uid/:token',
-		element: <ActivationPage />,
 	},
 ]);
 

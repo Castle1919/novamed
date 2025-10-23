@@ -1,183 +1,178 @@
 import React, { useState, useEffect } from 'react';
 import '../App.css';
-import logo from '../assets/logo.png';
-import Button from '@mui/material/Button';
+import {
+    Toolbar, IconButton, Menu, MenuItem, Typography, Avatar, Button,
+    CircularProgress, Box
+} from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import { IconButton } from '@mui/material';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
-import ServiceModal from '../components/ModalService';
-import ContactsModal from '../components/ModalContacts';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import Avatar from '@mui/material/Avatar';
-import { blue } from '@mui/material/colors';
 import { styled } from '@mui/material/styles';
+import { blue } from '@mui/material/colors';
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import logo from '../assets/logo.png';
 import api from '../api/axios';
 import { getAccessToken, getUserRole, logout } from '../api';
+import ServiceModal from '../components/ModalService';
+import ContactsModal from '../components/ModalContacts';
+import ProfileModal from '../components/ProfileModal';
 
-export default function MainDoctorMain() {
-	const [isModalServiceOpen, setIsModalServiceOpen] = useState(false);
-	const [isModalContactsOpen, setIsModalContactsOpen] = useState(false);
-	const [anchorEl, setAnchorEl] = useState(null);
-	const [anchorEl2, setAnchorEl2] = useState(null);
-	const [profile, setProfile] = useState(null);
-	const [loading, setLoading] = useState(true);
-	const navigate = useNavigate();
-	
-	const open = Boolean(anchorEl);
-	const open2 = Boolean(anchorEl2);
+const ColorButton = styled(Button)(({ theme }) => ({
+    color: theme.palette.getContrastText(blue[500]),
+    backgroundColor: blue[500],
+    '&:hover': {
+        backgroundColor: blue[700],
+    },
+}));
 
-	const ColorButton = styled(Button)(({ theme }) => ({
-		color: theme.palette.getContrastText(blue[500]),
-		backgroundColor: blue[500],
-		'&:hover': {
-			backgroundColor: blue[700],
-		},
-	}));
+const MainDoctorMainComponent = () => {
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [profile, setProfile] = useState(null);
 
-	useEffect(() => {
-		const token = getAccessToken();
-		const role = getUserRole();
-		
-		if (!token) {
-			navigate('/doctor');
-			return;
-		}
+    // Состояния для модальных окон
+    const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
+    const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-		const loadProfile = async () => {
-			try {
-				setLoading(true);
-				
-				if (role === 'doctor') {
-					try {
-						const res = await api.get('/doctors/me/');
-						const { id, first_name, last_name } = res.data;
-						
-						if (!first_name || !last_name) {
-							navigate('/doctor/main/profile?force=true');
-							return;
-						}
-						
-						// Сохраняем ID, имя и фамилию
-						setProfile({ id, first_name, last_name });
-						
-					} catch (err) {
-						if (err.response && err.response.status === 404) {
-							navigate('/doctor/main/profile?force=true');
-						} else {
-							console.error('Error loading doctor profile:', err);
-						}
-					}
-				} else {
-					// Если роль не doctor - здесь не должно быть
-				}
-			} finally {
-				setLoading(false);
-			}
-		};
+    // Состояния для меню
+    const [mainMenuAnchor, setMainMenuAnchor] = useState(null);
+    const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
 
-		loadProfile();
-	}, [navigate]);
+	const profileMenuButtonRef = React.useRef(null);
+	const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
-	const handleClick = (e) => setAnchorEl(e.currentTarget);
-	const handleClick2 = (e) => setAnchorEl2(e.currentTarget);
-	const handleClose = () => setAnchorEl(null);
-	const handleClose2 = () => setAnchorEl2(null);
-	const handleServiceClick = () => setIsModalServiceOpen(true);
-	const handleCloseModalService = () => setIsModalServiceOpen(false);
-	const handleContactsClick = () => setIsModalContactsOpen(true);
-	const handleCloseModalContacts = () => setIsModalContactsOpen(false);
+    const userRole = getUserRole();
 
-	const handleLogout = () => {
-		logout();
-		navigate('/');
+    useEffect(() => {
+        const token = getAccessToken();
+        if (!token) {
+            navigate('/doctor');
+            return;
+        }
+
+        const loadProfile = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get('/doctors/me/');
+                const { id, first_name, last_name } = res.data;
+                if (!first_name || !last_name) {
+                    navigate('/doctor/main/profile?force=true');
+                    return;
+                }
+                setProfile({ id, first_name, last_name });
+            } catch (err) {
+                if (err.response?.status === 404) {
+                    navigate('/doctor/main/profile?force=true');
+                } else {
+                    console.error('Error loading doctor profile:', err);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadProfile();
+    }, [navigate]);
+
+    // Обработчики главного меню
+    const handleMainMenuOpen = (e) => setMainMenuAnchor(e.currentTarget);
+    const handleMainMenuClose = () => setMainMenuAnchor(null);
+
+    // Обработчики меню профиля
+    const handleProfileMenuOpen = () => {
+		setIsProfileMenuOpen(true);
 	};
 
-	if (loading) {
-		return (
-			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-				<Typography variant="h5">Загрузка...</Typography>
-			</div>
-		);
-	}
+	const handleProfileMenuClose = () => {
+		setIsProfileMenuOpen(false);
+		// Возвращаем фокус на наш div
+		if (profileMenuButtonRef.current) {
+			profileMenuButtonRef.current.focus();
+		}
+	};
 
-	return (
-		<>
-			<Toolbar className='header'>
-				<div className='header-left'>
-					<IconButton 
-						aria-controls={open ? 'basic-menu' : undefined} 
-						aria-haspopup="true" 
-						aria-expanded={open ? 'true' : undefined} 
-						onClick={handleClick}
-					>
-						<MenuIcon fontSize="large" />
-					</IconButton>
-					<Menu
-						id="basic-menu"
-						anchorEl={anchorEl}
-						open={open}
-						onClose={handleClose}
-					>
-						<NavLink to="/doctor/main" className='for-navs'>
-							<MenuItem onClick={handleClose}>Главная</MenuItem>
-						</NavLink>
-						<MenuItem onClick={() => { handleClose(); handleServiceClick(); }}>
-							Сервисы
-						</MenuItem>
-						<MenuItem onClick={() => { handleClose(); handleContactsClick(); }}>
-							Контакты
-						</MenuItem>
-					</Menu>
-					<NavLink to="/doctor/main" className='for-navs nav-link-main-main'>
-						<Typography variant="h6">
-							<img src={logo} className='logo' alt="" />
-						</Typography>
-						<h2 className='logoName'>NovaMed</h2>
-					</NavLink>
-				</div>
-				
-				<div className='header-right2' onClick={handleClick2}>
-					<h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Пользователь'}</h3>
-					<Avatar sx={{ bgcolor: blue[500] }}>
-						{profile?.first_name?.[0]?.toUpperCase() || 'U'}
-					</Avatar>
-				</div>
-				
-				<Menu
-					id="profile-menu"
-					anchorEl={anchorEl2}
-					open={open2}
-					onClose={handleClose2}
-				>
-					<NavLink to="/doctor/main/profile" className='for-navs'>
-						<MenuItem onClick={handleClose2}>Изменить профиль</MenuItem>
-					</NavLink>
-					<MenuItem onClick={handleLogout}>Выйти</MenuItem>
-				</Menu>
-			</Toolbar>
+    // Обработчики модальных окон
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
-			<div className='wrap-for-patients-view'>
-				<div className='pat-btns'>
-					<NavLink to="/doctor/main/patients" className='for-navs'>
-						<ColorButton variant="contained">Прием пациентов</ColorButton>
-					</NavLink>
-					<NavLink to="/doctor/main/history" className='for-navs'>
-						<ColorButton variant="contained">Пациенты</ColorButton>
-					</NavLink>
-					<NavLink to="/doctor/main/accounting" className='for-navs'>
-						<ColorButton variant="contained">Склад</ColorButton>
-					</NavLink>
-				</div>
-				<div className='cont-for-patients-view'>
-					<Outlet context={{profile}}/>
-				</div>
-			</div>
+    const handleProfileModalOpen = () => {
+        handleProfileMenuClose(); // Закрываем меню перед открытием модалки
+        setIsProfileModalOpen(true);
+    };
 
-			{isModalServiceOpen && <ServiceModal onClose={handleCloseModalService} />}
-			{isModalContactsOpen && <ContactsModal onClose={handleCloseModalContacts} />}
-		</>
-	);
-}
+    const handleProfileModalClose = (shouldReload) => {
+        setIsProfileModalOpen(false);
+        if (shouldReload) {
+            window.location.reload();
+        }
+    };
+
+    if (loading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <CircularProgress />
+                <Typography sx={{ ml: 2 }}>Загрузка профиля...</Typography>
+            </Box>
+        );
+    }
+
+    return (
+        <>
+            <Toolbar className='header'>
+                {/* Левая часть хедера */}
+                <div className='header-left'>
+                    <IconButton onClick={handleMainMenuOpen}>
+                        <MenuIcon fontSize="large" />
+                    </IconButton>
+                    <Menu anchorEl={mainMenuAnchor} open={Boolean(mainMenuAnchor)} onClose={handleMainMenuClose}>
+                        <MenuItem component={NavLink} to="/doctor/main" onClick={handleMainMenuClose}>Главная</MenuItem>
+                        <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>Сервисы</MenuItem>
+                        <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>Контакты</MenuItem>
+                    </Menu>
+                    <NavLink to="/doctor/main" className='for-navs nav-link-main-main'>
+                        <img src={logo} className='logo' alt="NovaMed Logo" />
+                        <h2 className='logoName'>NovaMed</h2>
+                    </NavLink>
+                </div>
+
+                {/* Правая часть хедера (профиль) */}
+                <div className='header-right2' onClick={handleProfileMenuOpen} ref={profileMenuButtonRef} tabIndex={-1}>
+                    <h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Пользователь'}</h3>
+                    <Avatar sx={{ bgcolor: blue[500] }}>
+                        {profile?.first_name?.[0]?.toUpperCase() || 'U'}
+                    </Avatar>
+                </div>
+                <Menu anchorEl={profileMenuButtonRef.current} open={isProfileMenuOpen} onClose={handleProfileMenuClose}>
+                    <MenuItem onClick={handleProfileModalOpen}>Изменить профиль</MenuItem>
+                    <MenuItem onClick={handleLogout}>Выйти</MenuItem>
+                </Menu>
+            </Toolbar>
+
+            {/* Основной контент */}
+            <div className='wrap-for-patients-view'>
+                <div className='pat-btns'>
+                    <NavLink to="/doctor/main/patients"><ColorButton variant="contained">Прием пациентов</ColorButton></NavLink>
+                    <NavLink to="/doctor/main/history"><ColorButton variant="contained">Все пациенты (ЭМК)</ColorButton></NavLink>
+                    <NavLink to="/doctor/main/accounting"><ColorButton variant="contained">Склад</ColorButton></NavLink>
+                </div>
+                <div className='cont-for-patients-view'>
+                    <Outlet context={{ profile }} />
+                </div>
+            </div>
+
+            {/* Модальные окна */}
+            {isServiceModalOpen && <ServiceModal onClose={() => setIsServiceModalOpen(false)} />}
+            {isContactsModalOpen && <ContactsModal onClose={() => setIsContactsModalOpen(false)} />}
+            <ProfileModal
+                open={isProfileModalOpen}
+                onClose={handleProfileModalClose}
+                role={userRole}
+            />
+        </>
+    );
+};
+
+// Оборачиваем в React.memo для оптимизации
+const MainDoctorMain = React.memo(MainDoctorMainComponent);
+export default MainDoctorMain;

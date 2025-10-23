@@ -72,7 +72,7 @@ class PatientListView(generics.ListCreateAPIView):
 class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
-    permission_classes = [IsDoctorUser]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 class MyPatientView(generics.RetrieveUpdateAPIView):
@@ -135,7 +135,7 @@ class DoctorListView(generics.ListAPIView):
 
 
 
-class DoctorDetailView(generics.RetrieveAPIView):
+class DoctorDetailView(generics.RetrieveUpdateAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -441,7 +441,7 @@ class MyAppointmentsView(APIView):
                 
                 patient_data = {
                     'id': apt.patient.id, 'first_name': apt.patient.first_name,
-                    'last_name': apt.patient.last_name, 'phone': apt.patient.phone or '',
+                    'last_name': apt.patient.last_name, 'phone': apt.patient.user.phone or '',
                     'age': age, 'gender': apt.patient.get_gender_display(), 'iin': apt.patient.iin,
                 }
                 

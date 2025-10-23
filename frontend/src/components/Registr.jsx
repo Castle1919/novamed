@@ -56,6 +56,7 @@ function Registr({ onClose }) {
 				password: values.password,
 				first_name: values.firstName,
 				last_name: values.lastName,
+				phone: values.phone,
 			});
 
 			// Показываем сообщение об успехе

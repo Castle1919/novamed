@@ -1,16 +1,32 @@
 from rest_framework import serializers
-from .models import Patient, Doctor, Medicine, Appointment
+from .models import *
+from accounts.models import *
 from django.utils import timezone
 from datetime import datetime, timedelta
 
+# Сериализатор для User, чтобы обновлять его внутри профиля
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('email', 'phone')
 
 class PatientSerializer(serializers.ModelSerializer):
+    user = UserProfileUpdateSerializer()
+
     class Meta:
         model = Patient
-        fields = "__all__"
-        extra_kwargs = {
-            'user': {'read_only': True},
-        }
+        fields = '__all__'
+
+    def update(self, instance, validated_data):
+        # Обновляем данные User
+        user_data = validated_data.pop('user', {})
+        user = instance.user
+        user.email = user_data.get('email', user.email)
+        user.phone = user_data.get('phone', user.phone)
+        user.save()
+
+        # Обновляем остальные данные Patient
+        return super().update(instance, validated_data)
 
     def validate_iin(self, value):
         # Ensure IIN is 12 digits
@@ -39,12 +55,19 @@ class PatientSerializer(serializers.ModelSerializer):
 
 
 class DoctorSerializer(serializers.ModelSerializer):
+    user = UserProfileUpdateSerializer()
+
     class Meta:
         model = Doctor
         fields = '__all__'
-        extra_kwargs = {
-            'user': {'read_only': True},
-        }
+
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', {})
+        user = instance.user
+        user.email = user_data.get('email', user.email)
+        user.phone = user_data.get('phone', user.phone)
+        user.save()
+        return super().update(instance, validated_data)
 
     def validate_iin(self, value):
         """Валидация ИИН врача"""
@@ -339,3 +362,4 @@ class AvailableSlotsSerializer(serializers.Serializer):
             )
         
         return value
+    

@@ -21,6 +21,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
     first_name = serializers.CharField(required=True)
     last_name = serializers.CharField(required=True)
+    phone = serializers.CharField(required=True, max_length=20)
+
 
     class Meta:
         model = User
@@ -33,6 +35,8 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
+            phone=validated_data.get('phone', ''),
+
             is_active=False
         )
         return user
@@ -53,3 +57,21 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data['email'] = self.user.email
         data['role'] = 'doctor' if self.user.is_doctor else 'patient'
         return data
+
+
+class UserUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'email', 'phone')
+
+    def validate_email(self, value):
+        user = self.instance
+        if User.objects.exclude(pk=user.pk).filter(email=value).exists():
+            raise serializers.ValidationError("Этот email уже используется.")
+        return value
+
+    def validate_phone(self, value):
+        user = self.instance
+        if User.objects.exclude(pk=user.pk).filter(phone=value).exists():
+            raise serializers.ValidationError("Этот телефон уже используется.")
+        return value
