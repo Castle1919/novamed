@@ -13,59 +13,28 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'username', 'email', 'is_doctor', 'is_patient', 'phone', 'avatar']
 
 
+
 class RegisterSerializer(serializers.ModelSerializer):
-    """Сериализатор для регистрации нового пользователя."""
-    password = serializers.CharField(write_only=True)
-    # Optional patient profile fields
-    first_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    last_name = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    birth_date = serializers.DateField(write_only=True, required=False)
-    gender = serializers.ChoiceField(write_only=True, choices=(('M', 'M'), ('F', 'F')), required=False)
-    iin = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    phone = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    """
+    Сериализатор для регистрации нового пользователя с активацией по email.
+    """
+    password = serializers.CharField(write_only=True, required=True)
+    first_name = serializers.CharField(required=True)
+    last_name = serializers.CharField(required=True)
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'is_doctor', 'is_patient']
+        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name')
 
     def create(self, validated_data):
-        # Extract patient-related data if present
-        patient_data = {
-            'first_name': validated_data.pop('first_name', None),
-            'last_name': validated_data.pop('last_name', None),
-            'birth_date': validated_data.pop('birth_date', None),
-            'gender': validated_data.pop('gender', None),
-            'iin': validated_data.pop('iin', None),
-            'phone': validated_data.pop('phone', None),
-        }
-
         user = User.objects.create_user(
             username=validated_data['username'],
-            email=validated_data.get('email'),
+            email=validated_data['email'],
             password=validated_data['password'],
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            is_active=False
         )
-        user.is_doctor = validated_data.get('is_doctor', False)
-        user.is_patient = validated_data.get('is_patient', False)
-        user.save()
-
-        # If registering as patient and patient_data has required fields, create Patient
-        if user.is_patient:
-            # ensure required fields for Patient exist (first_name,last_name,birth_date,iin)
-            try:
-                if patient_data.get('first_name') and patient_data.get('last_name') and patient_data.get('birth_date') and patient_data.get('iin'):
-                    Patient.objects.create(
-                        user=user,
-                        first_name=patient_data.get('first_name'),
-                        last_name=patient_data.get('last_name'),
-                        birth_date=patient_data.get('birth_date'),
-                        gender=patient_data.get('gender') or 'M',
-                        iin=patient_data.get('iin'),
-                        phone=patient_data.get('phone'),
-                    )
-            except Exception:
-                # If patient creation fails, we still return created user; client should handle incomplete profile
-                pass
-
         return user
 
 
