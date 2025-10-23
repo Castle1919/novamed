@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
-from patients import views as patient_views
+from patients import views as patient_views 
 from accounts.views import MyTokenObtainPairView, UserDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
 

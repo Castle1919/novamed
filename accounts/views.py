@@ -10,11 +10,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import *
 from patients.models import Patient
 import logging
 import random
 from datetime import date
+from rest_framework_simplejwt.tokens import RefreshToken
+import pyotp
+from rest_framework.permissions import IsAuthenticated
 
 User = get_user_model()
 
@@ -118,3 +121,59 @@ class UserDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+# Views для верификации телефона
+class SendPhoneVerificationCodeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not user.phone:
+            return Response({'error': 'Сначала укажите номер телефона в профиле.'}, status=400)
+
+        # Генерируем TOTP (Time-based One-Time Password)
+        user.otp_secret = pyotp.random_base32()
+        user.save()
+        
+        totp = pyotp.TOTP(user.otp_secret, interval=300) # Код живет 5 минут
+        otp_code = totp.now()
+        
+        message = f"Ваш код подтверждения для NovaMed: {otp_code}"
+        
+        # Используем вашу заглушку для SMS
+        from patients.sms_service import send_sms
+        if send_sms(user.phone, message):
+            return Response({'success': 'Код подтверждения отправлен на ваш номер.'})
+        else:
+            return Response({'error': 'Не удалось отправить SMS.'}, status=500)
+
+class VerifyPhoneView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        code = request.data.get('code')
+
+        if not code:
+            return Response({'error': 'Код не предоставлен.'}, status=400)
+
+        totp = pyotp.TOTP(user.otp_secret, interval=300)
+        
+        if totp.verify(code):
+            user.phone_verified = True
+            user.save()
+            
+            # Если это первая верификация, можно выдать новые токены с флагом 2ФА
+            refresh = RefreshToken.for_user(user)
+            # Добавим флаг 2ФА в токен, если нужно
+            # refresh['is_2fa_enabled'] = True
+            
+            return Response({
+                'success': 'Номер телефона успешно подтвержден!',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            })
+        else:
+            return Response({'error': 'Неверный код подтверждения.'}, status=400)
+    
