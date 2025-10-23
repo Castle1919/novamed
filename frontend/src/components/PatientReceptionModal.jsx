@@ -232,7 +232,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 	};
 
 	const createFollowUpAppointment = async () => {
-		if (!needFollowUp || !followUpDate || !followUpTime) return;
+		if (!needFollowUp || !followUpDate || !followUpTime) return false;
 
 		try {
 			const dateTimeStr = `${followUpDate.format('YYYY-MM-DD')}T${followUpTime}:00`;
@@ -245,10 +245,48 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 			});
 
 			if (typeof onFollowupCreated === 'function') onFollowupCreated();
+			return true; // Возвращаем true при успехе
 		} catch (e) {
 			const msg = e.response?.data?.message || e.response?.data?.error || 'Ошибка при создании повторного визита';
 			setSnack({ open: true, message: msg, severity: 'error' });
-			throw e;
+			return false; // Возвращаем false при ошибке
+		}
+	};
+
+	const syncActiveMedicines = async (isActive) => {
+		const doctorId = doctorProfile?.id;
+
+		console.log('[ОТЛАДКА SYNC] Начало синхронизации');
+		console.log('[ОТЛАДКА SYNC] doctorProfile:', doctorProfile);
+		console.log('[ОТЛАДКА SYNC] doctorId:', doctorId);
+		console.log('[ОТЛАДКА SYNC] patientId:', patientId);
+
+		if (!doctorId || !patientId) {
+			console.error("syncActiveMedicines: doctorId или patientId не найдены. Синхронизация отменена.");
+			return;
+		}
+
+		try {
+			const payload = {
+				patient_id: patientId,
+				active: isActive, // Используем переданное значение
+				medicines: []
+			};
+
+			if (isActive) {
+				payload.medicines = prescriptions
+					.filter(p => !!p.medicine_id)
+					.map(p => ({
+						medicine_id: p.medicine_id,
+						dosage: p.dosage || '',
+						frequency: p.frequency || '',
+						duration: p.duration || '',
+						instructions: p.instructions || '',
+					}));
+			}
+			await axios.post('/patients/active-medicines/sync/', payload);
+		} catch (e) {
+			console.error('Ошибка при синхронизации активных препаратов:', e);
 		}
 	};
 
@@ -264,7 +302,20 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 		}
 
 		setSaving(true);
+
 		try {
+			// Сначала пытаемся создать повторный визит, если нужно
+			let followupOK = false;
+			if (needFollowUp) {
+				followupOK = await createFollowUpAppointment();
+				if (!followupOK) {
+					// Если создание повторного визита не удалось, прерываем операцию
+					setSaving(false);
+					return;
+				}
+			}
+
+			// Завершаем основной прием
 			const payload = {
 				complaints: form.complaints,
 				anamnesis: form.anamnesis,
@@ -282,28 +333,31 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 						instructions: p.instructions
 					}))
 			};
-
 			const res = await axios.post(`/appointments/${appointment.id}/complete/`, payload);
 			const mrId = res.data?.medical_record_id;
-			setRecordId(mrId);
 
+			// Загружаем файлы, если они есть
 			if (mrId && pendingFiles.length > 0) {
 				await uploadPendingFilesSequential(mrId);
 			}
 
-			if (needFollowUp) {
-				await createFollowUpAppointment();
-			}
+			// Синхронизируем активные препараты
+			// `followupOK` будет true, только если галочка стояла и визит создался
+			await syncActiveMedicines(followupOK);
 
-			setSnack({ open: true, message: 'Прием завершён', severity: 'success' });
-			setTimeout(() => onClose(true), 1000);
+			setSnack({ open: true, message: 'Прием успешно завершён!', severity: 'success' });
+
+			// Закрываем модалку через секунду
+			setTimeout(() => {
+				onClose(true); // Вызываем onClose для закрытия и обновления
+			}, 1200);
 
 		} catch (e) {
 			const msg = e?.response?.data?.error || e?.response?.data?.message || 'Ошибка при завершении приема';
 			setSnack({ open: true, message: msg, severity: 'error' });
-		} finally {
-			setSaving(false);
+			setSaving(false); // Сбрасываем saving при ошибке
 		}
+		// `finally` убран, чтобы `setSaving(false)` не срабатывал до `onClose`
 	};
 
 	const AllergyAlert = useMemo(() => {
@@ -315,6 +369,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 			</Alert>
 		);
 	}, [prescriptions]);
+
 
 	const FollowUpServerDay = (props) => {
 		const { day, outsideCurrentMonth, ...other } = props;
@@ -329,6 +384,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 			(apt) => dayjs(apt.date_time).format('YYYY-MM-DD') === dateStr && apt.status === 'scheduled'
 		);
 
+
 		return (
 			<Badge
 				key={day.toString()}
@@ -338,7 +394,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 					'& .MuiBadge-badge': {
 						fontSize: '10px', color: '#1976d2',
 						backgroundColor: 'transparent', right: '50%',
-						transform: 'translateX(50%)', top: '32px',
+						transform: 'translateX(50%)', top: '20px',
 						pointerEvents: 'none',
 					}
 				}}

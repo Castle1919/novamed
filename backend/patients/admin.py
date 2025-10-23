@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Patient, Doctor, Appointment, Medicine, MedicalRecord, Prescription, DoctorNote, DiagnosisTemplate, PatientFile
+from .models import (
+    Patient, Doctor, 
+    Appointment, Medicine, 
+    MedicalRecord, 
+    Prescription, DoctorNote, 
+    DiagnosisTemplate, PatientFile,
+    PatientActiveMedicine,
+    )
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
@@ -31,3 +38,6 @@ admin.site.register(Prescription)
 admin.site.register(DoctorNote)
 admin.site.register(DiagnosisTemplate)
 admin.site.register(PatientFile)
+
+    
+admin.site.register(PatientActiveMedicine)

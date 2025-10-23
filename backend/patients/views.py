@@ -14,22 +14,24 @@ from .models import (
     PatientFile,
     DoctorNote,
     DiagnosisTemplate,
+    PatientActiveMedicine
     )
 from .serializers import (
     PatientSerializer,
     DoctorSerializer,
     MedicineSerializer,
     AppointmentSerializer,
-    AppointmentCreateSerializer,
     AppointmentListSerializer,
     AppointmentDetailSerializer,
-    AvailableSlotsSerializer,
+    
 )
 from django.utils import timezone
 from datetime import datetime, timedelta, time, date
 from django.utils.dateparse import parse_date
 from django.utils.dateparse import parse_datetime
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Case, When, Value, IntegerField
+
+
 
 
 
@@ -395,6 +397,7 @@ class AppointmentCreateView(APIView):
             }
         })
 
+
 class MyAppointmentsView(APIView):
     """
     Получить записи текущего пользователя (пациента или врача)
@@ -404,31 +407,30 @@ class MyAppointmentsView(APIView):
     def get(self, request):
         date_str = request.query_params.get('date')
         
-        # Проверяем, является ли пользователь врачом
+        # 1. Проверяем, является ли пользователь ВРАЧОМ
         try:
             doctor = Doctor.objects.get(user=request.user)
-            # Если врач, возвращаем его записи
+            
+            # Фильтруем по дате, если она есть
+            queryset = Appointment.objects.filter(doctor=doctor)
             if date_str:
                 from django.utils.dateparse import parse_date
                 target_date = parse_date(date_str)
                 if target_date:
-                    appointments = Appointment.objects.filter(
-                        doctor=doctor,
-                        date_time__date=target_date
-                    ).select_related('patient', 'patient__user').order_by('date_time')
-                else:
-                    appointments = Appointment.objects.filter(
-                        doctor=doctor
-                    ).select_related('patient', 'patient__user').order_by('date_time')
-            else:
-                appointments = Appointment.objects.filter(
-                    doctor=doctor
-                ).select_related('patient', 'patient__user').order_by('date_time')
+                    queryset = queryset.filter(date_time__date=target_date)
+
+            # СОРТИРОВКА ДЛЯ ВРАЧА: сначала 'scheduled', потом остальные, и по времени
+            appointments = queryset.select_related('patient', 'patient__user').annotate(
+                status_order=Case(
+                    When(status='scheduled', then=Value(1)),
+                    default=Value(2),
+                    output_field=IntegerField()
+                )
+            ).order_by('status_order', 'date_time')
             
             # Сериализуем данные для врача
             data = []
             for apt in appointments:
-                # Вычисляем возраст из birth_date
                 age = None
                 if apt.patient.birth_date:
                     today = date.today()
@@ -436,57 +438,52 @@ class MyAppointmentsView(APIView):
                     age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
                 
                 patient_data = {
-                    'id': apt.patient.id,
-                    'first_name': apt.patient.first_name,
-                    'last_name': apt.patient.last_name,
-                    'phone': apt.patient.phone or '',
-                    'age': age,
-                    'gender': apt.patient.get_gender_display() if apt.patient.gender else '',
-                    'iin': apt.patient.iin,
+                    'id': apt.patient.id, 'first_name': apt.patient.first_name,
+                    'last_name': apt.patient.last_name, 'phone': apt.patient.phone or '',
+                    'age': age, 'gender': apt.patient.get_gender_display(), 'iin': apt.patient.iin,
                 }
                 
-                # Добавляем аватар если есть
                 if hasattr(apt.patient.user, 'avatar') and apt.patient.user.avatar:
                     patient_data['avatar'] = request.build_absolute_uri(apt.patient.user.avatar.url)
                     
                 data.append({
-                    'id': apt.id,
-                    'date_time': apt.date_time.isoformat(),
-                    'status': apt.status,
-                    'notes': apt.notes or '',
-                    'diagnosis': apt.diagnosis or '',
-                    'room_number': apt.room_number or '',
-                    'patient': apt.patient.id,
+                    'id': apt.id, 'date_time': apt.date_time.isoformat(), 'status': apt.status,
+                    'notes': apt.notes or '', 'diagnosis': apt.diagnosis or '',
+                    'room_number': apt.room_number or '', 'patient': apt.patient.id,
                     'patient_details': patient_data
                 })
             return Response(data)
             
         except Doctor.DoesNotExist:
-            pass
+            pass # Если не врач, продолжаем проверку на пациента
         
-        # Если не врач, проверяем пациента
+        # 2. Если не врач, проверяем, является ли пользователь ПАЦИЕНТОМ
         try:
             patient = Patient.objects.get(user=request.user)
-            appointments = Appointment.objects.filter(
-                patient=patient
-            ).select_related('doctor').order_by('-date_time')
+            
+            # СОРТИРОВКА ДЛЯ ПАЦИЕНТА: 'scheduled' -> 'completed' -> 'cancelled'
+            appointments = Appointment.objects.filter(patient=patient).select_related('doctor').annotate(
+                status_order=Case(
+                    When(status='scheduled', then=Value(1)),
+                    When(status='completed', then=Value(2)),
+                    When(status='cancelled', then=Value(3)),
+                    default=Value(4),
+                    output_field=IntegerField()
+                )
+            ).order_by('status_order', '-date_time')
             
             # Сериализуем данные для пациента
             data = []
             for apt in appointments:
                 data.append({
-                    'id': apt.id,
-                    'date_time': apt.date_time.isoformat(),
-                    'status': apt.status,
-                    'notes': apt.notes or '',
-                    'diagnosis': apt.diagnosis or '',
-                    'room_number': apt.room_number or '',
-                    'doctor': apt.doctor.id,
+                    'id': apt.id, 'date_time': apt.date_time.isoformat(), 'status': apt.status,
+                    'notes': apt.notes or '', 'diagnosis': apt.diagnosis or '',
+                    'room_number': apt.room_number or '', 'doctor': apt.doctor.id,
                     'doctor_details': {
                         'id': apt.doctor.id,
                         'name': f"{apt.doctor.last_name} {apt.doctor.first_name}",
                         'specialization': apt.doctor.specialty,
-                        'office_number': apt.room_number or getattr(apt.doctor, 'office_number', ''),  # ДОБАВЛЕНО
+                        'office_number': apt.room_number or getattr(apt.doctor, 'office_number', ''),
                         'phone': apt.doctor.work_phone or '',
                         'experience_years': apt.doctor.experience_years,
                     }
@@ -495,7 +492,6 @@ class MyAppointmentsView(APIView):
             
         except Patient.DoesNotExist:
             return Response({"error": "Пользователь не является ни врачом, ни пациентом"}, status=403)
-
 
 class AppointmentDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
     """Просмотр, обновление и удаление записи"""
@@ -546,6 +542,12 @@ class AvailableSlotsView(APIView):
         doctor_id = request.query_params.get('doctor_id')
         date_str = request.query_params.get('date')
         
+        print(f"\n{'='*60}")
+        print(f"AvailableSlotsView вызван")
+        print(f"doctor_id: {doctor_id}")
+        print(f"date: {date_str}")
+        print(f"{'='*60}\n")
+        
         if not doctor_id or not date_str:
             return Response({
                 'success': False,
@@ -554,6 +556,7 @@ class AvailableSlotsView(APIView):
         
         try:
             doctor = Doctor.objects.get(id=doctor_id)
+            print(f"✓ Врач найден: {doctor.first_name} {doctor.last_name}")
         except Doctor.DoesNotExist:
             return Response({
                 'success': False,
@@ -568,79 +571,114 @@ class AvailableSlotsView(APIView):
                 'message': 'Неверный формат даты'
             }, status=400)
         
+        print(f"✓ Дата распознана: {target_date} (день недели: {target_date.weekday()})")
+        
         # Проверяем выходной
         if target_date.weekday() in [5, 6]:
-            return Response({'success': True, 'slots': []})
+            print(f"⚠ Выходной день")
+            return Response({
+                'success': True, 
+                'slots': [],
+                'message': 'Выходной день'
+            })
         
-        # Получаем текущий часовой пояс из настроек Django
+        # Получаем текущий часовой пояс
         current_tz = timezone.get_current_timezone()
+        now = timezone.now()
         
-        # Генерируем все временные слоты с timezone-aware datetime
-        all_slots = []
-        current_time = timezone.make_aware(
-            datetime.combine(target_date, datetime.min.time().replace(hour=9, minute=0)),
-            current_tz
-        )
-        end_time = timezone.make_aware(
-            datetime.combine(target_date, datetime.min.time().replace(hour=18, minute=0)),
-            current_tz
-        )
-        lunch_start = timezone.make_aware(
-            datetime.combine(target_date, datetime.min.time().replace(hour=13, minute=0)),
-            current_tz
-        )
-        lunch_end = timezone.make_aware(
-            datetime.combine(target_date, datetime.min.time().replace(hour=14, minute=0)),
-            current_tz
-        )
+        print(f"✓ Текущее время (UTC): {now}")
+        print(f"✓ Текущее время (локальное): {now.astimezone(current_tz)}")
+        print(f"✓ Часовой пояс: {current_tz}")
         
-        while current_time < end_time:
-            if not (lunch_start <= current_time < lunch_end):
-                all_slots.append(current_time)
-            current_time += timedelta(minutes=30)
+        # Генерируем слоты
+        slots = []
+        start_hour = 9
+        end_hour = 18
+        lunch_start = 13
+        lunch_end = 14
         
-        # Получаем занятые слоты (в БД они в UTC)
-        booked_appointments = Appointment.objects.filter(
+        print(f"\n--- Генерация слотов ---")
+        
+        for hour in range(start_hour, end_hour):
+            for minute in [0, 30]:
+                # Пропускаем обед
+                if hour >= lunch_start and hour < lunch_end:
+                    continue
+                
+                # Создаем локальное время для слота
+                slot_time = time(hour, minute)
+                slot_datetime = timezone.make_aware(
+                    datetime.combine(target_date, slot_time),
+                    current_tz
+                )
+                
+                # Проверяем что слот не в прошлом
+                is_past = slot_datetime <= now
+                
+                if not is_past:
+                    slots.append({
+                        'time': f"{hour:02d}:{minute:02d}",
+                        'datetime': slot_datetime.isoformat(),
+                        'is_past': False
+                    })
+                    print(f"  ✓ Слот {hour:02d}:{minute:02d} добавлен (datetime={slot_datetime.isoformat()})")
+                else:
+                    print(f"  ✗ Слот {hour:02d}:{minute:02d} пропущен (в прошлом)")
+        
+        print(f"\nВсего сгенерировано слотов (не в прошлом): {len(slots)}")
+        
+        # Получаем занятые слоты
+        print(f"\n--- Проверка занятых слотов ---")
+        booked = Appointment.objects.filter(
             doctor=doctor,
-            date_time__date=target_date,  # Django автоматически конвертирует дату
+            date_time__date=target_date,
             status='scheduled'
         )
         
-        booked_datetimes = []
-        for apt in booked_appointments:
-            # Конвертируем UTC время в локальное
-            local_time = apt.date_time.astimezone(current_tz)
-            booked_datetimes.append(local_time)
-            print(f"  - Appointment ID {apt.id}: UTC={apt.date_time.strftime('%H:%M')}, Local={local_time.strftime('%H:%M')}")
+        print(f"Найдено записей на эту дату: {booked.count()}")
         
-        
-        # Формируем ответ
-        slots = []
-        for slot_datetime in all_slots:
-            slot_time_str = slot_datetime.strftime('%H:%M')
+        booked_times = set()
+        for apt in booked:
+            # Время в БД (UTC)
+            utc_time = apt.date_time
+            # Конвертируем в локальное время
+            local_time = utc_time.astimezone(current_tz)
+            time_str = f"{local_time.hour:02d}:{local_time.minute:02d}"
+            booked_times.add(time_str)
             
-            # Проверяем занят ли слот (сравниваем timezone-aware datetime)
-            is_available = True
-            for booked_dt in booked_datetimes:
-                # Сравниваем час и минуту
-                if (slot_datetime.hour == booked_dt.hour and 
-                    slot_datetime.minute == booked_dt.minute):
-                    is_available = False
-                    print(f"DEBUG: Slot {slot_time_str} is BOOKED")
-                    break
-            
-            slots.append({
-                'time': slot_time_str,
-                'datetime': slot_datetime.isoformat(),
-                'available': is_available
-            })
+            print(f"  Запись ID={apt.id}:")
+            print(f"    - UTC: {utc_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            print(f"    - Локальное: {local_time.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            print(f"    - Время: {time_str}")
+            print(f"    - Пациент: {apt.patient.first_name} {apt.patient.last_name}")
         
-        available_count = sum(1 for s in slots if s['available'])
-        print(f"Total slots: {len(slots)}, Available: {available_count}, Booked: {len(slots) - available_count}\n")
+        print(f"\nЗанятые времена: {sorted(booked_times)}")
+        
+        # Помечаем занятые слоты
+        available_count = 0
+        for slot in slots:
+            slot['available'] = slot['time'] not in booked_times
+            if slot['available']:
+                available_count += 1
+        
+        print(f"\n--- Итого ---")
+        print(f"Всего слотов: {len(slots)}")
+        print(f"Доступных: {available_count}")
+        print(f"Занятых: {len(booked_times)}")
+        print(f"{'='*60}\n")
         
         return Response({
             'success': True,
-            'slots': slots
+            'slots': slots,
+            'total_slots': len(slots),
+            'available_count': available_count,
+            'booked_count': len(booked_times),
+            'debug': {
+                'date': target_date.isoformat(),
+                'timezone': str(current_tz),
+                'now_utc': now.isoformat(),
+                'now_local': now.astimezone(current_tz).isoformat(),
+            }
         })
 
         
@@ -757,6 +795,9 @@ class CompleteAppointmentView(APIView):
         except Appointment.DoesNotExist:
             return Response({'error': 'Запись не найдена'}, status=404)
         
+        if appointment.status == 'completed':
+            return Response({'error': 'Прием уже завершен'}, status=400)
+        
         # Данные из формы
         diagnosis = request.data.get('diagnosis')
         complaints = request.data.get('complaints', '')
@@ -764,6 +805,9 @@ class CompleteAppointmentView(APIView):
         objective_data = request.data.get('objective_data', '')
         recommendations = request.data.get('recommendations', '')
         prescriptions_data = request.data.get('prescriptions', [])
+        doctor_notes = request.data.get('doctor_notes', '')
+        schedule_followup = request.data.get('schedule_followup', False)
+        followup_date_str = request.data.get('followup_date')
         
         if not diagnosis:
             return Response({'error': 'Диагноз обязателен'}, status=400)
@@ -778,37 +822,81 @@ class CompleteAppointmentView(APIView):
             recommendations=recommendations
         )
         
-        # Создаем рецепты
+        # Создаем рецепты и активные препараты
         for presc in prescriptions_data:
-            mid = presc.get('medicine_id')
-            if not mid:
+            medicine_id = presc.get('medicine_id')
+            if not medicine_id:
                 continue
+            
             try:
-                mid = int(mid)
-            except (TypeError, ValueError):
-                return Response({'error': f'Некорректный препарат (id={mid})'}, status=400)
-
-            if not Medicine.objects.filter(id=mid).exists():
-                return Response({'error': f'Препарат c id={mid} не найден'}, status=400)
-
-            Prescription.objects.create(
+                medicine = Medicine.objects.get(id=medicine_id)
+            except Medicine.DoesNotExist:
+                continue
+            
+            # Создаем рецепт
+            prescription = Prescription.objects.create(
                 medical_record=medical_record,
-                medicine_id=mid,
+                medicine=medicine,
                 dosage=presc.get('dosage', ''),
                 frequency=presc.get('frequency', ''),
                 duration=presc.get('duration', ''),
                 instructions=presc.get('instructions', '')
             )
             
+            # Создаем активный препарат для пациента
+            PatientMedicine.objects.create(
+                patient=appointment.patient,
+                doctor=doctor,
+                medicine=medicine,
+                prescription=prescription,
+                is_active=True
+            )
+        
+        # Создаем приватную заметку врача
+        if doctor_notes:
+            DoctorNote.objects.create(
+                medical_record=medical_record,
+                doctor=doctor,
+                note=doctor_notes
+            )
+        
         # Обновляем статус записи
         appointment.status = 'completed'
         appointment.diagnosis = diagnosis
         appointment.save()
         
+        # Создаем повторную запись если нужно
+        followup_appointment = None
+        if schedule_followup and followup_date_str:
+            followup_dt = parse_datetime(followup_date_str)
+            if followup_dt:
+                if timezone.is_naive(followup_dt):
+                    followup_dt = timezone.make_aware(followup_dt, timezone.get_current_timezone())
+                
+                followup_appointment = Appointment.objects.create(
+                    patient=appointment.patient,
+                    doctor=doctor,
+                    date_time=followup_dt,
+                    notes='Повторный прием',
+                    status='scheduled',
+                    room_number=doctor.office_number if hasattr(doctor, 'office_number') else None
+                )
+        else:
+            # Если нет повторной записи - деактивируем препараты этого врача
+            PatientMedicine.objects.filter(
+                patient=appointment.patient,
+                doctor=doctor,
+                is_active=True
+            ).update(
+                is_active=False,
+                completed_date=timezone.now()
+            )
+        
         return Response({
             'success': True,
             'message': 'Прием завершен',
-            'medical_record_id': medical_record.id
+            'medical_record_id': medical_record.id,
+            'followup_appointment_id': followup_appointment.id if followup_appointment else None
         })
 
 
@@ -1326,7 +1414,80 @@ class MedicineListView(APIView):
         
         return Response(data)
 
+# 1. СИНХРОНИЗАЦИЯ АКТИВНЫХ ПРЕПАРАТОВ
+class PatientActiveMedicinesSyncView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def post(self, request):
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+        except Doctor.DoesNotExist:
+            return Response({'error': 'Доступ только для врача'}, status=status.HTTP_403_FORBIDDEN)
+
+        patient_id = request.data.get('patient_id')
+        active = request.data.get('active')
+        meds = request.data.get('medicines', [])
+
+        if patient_id is None or active is None:
+            return Response({'error': 'patient_id и active обязательны'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            patient = Patient.objects.get(id=patient_id)
+        except Patient.DoesNotExist:
+            return Response({'error': 'Пациент не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        PatientActiveMedicine.objects.filter(patient=patient, doctor=doctor).delete()
+
+        if bool(active):
+            bulk = []
+            for m in meds:
+                mid = m.get('medicine_id')
+                if not mid: continue
+                if not Medicine.objects.filter(id=mid).exists(): continue
+                bulk.append(PatientActiveMedicine(
+                    patient=patient, doctor=doctor, medicine_id=mid,
+                    dosage=m.get('dosage', ''), frequency=m.get('frequency', ''),
+                    duration=m.get('duration', ''), instructions=m.get('instructions', '')
+                ))
+            if bulk:
+                PatientActiveMedicine.objects.bulk_create(bulk)
+
+        return Response({'success': True})
+
+# 2. ПОЛУЧЕНИЕ СПИСКА АКТИВНЫХ ПРЕПАРАТОВ ДЛЯ ПАЦИЕНТА
+class PatientActiveMedicinesListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            patient = Patient.objects.get(user=request.user)
+        except Patient.DoesNotExist:
+            return Response({'error': 'Вы не являетесь пациентом'}, status=status.HTTP_403_FORBIDDEN)
+        
+        active_medicines = PatientActiveMedicine.objects.filter(
+            patient=patient
+        ).select_related('medicine', 'doctor')
+        
+        data = []
+        for am in active_medicines:
+            data.append({
+                'medicine_id': am.medicine.id,
+                'medicine_name': am.medicine.name,
+                'description': am.medicine.description,
+                'side_effects': am.medicine.side_effects,
+                'contraindications': am.medicine.contraindications,
+                'prescription_required': am.medicine.prescription_required,
+                'dosage': am.dosage,
+                'frequency': am.frequency,
+                'duration': am.duration,
+                'instructions': am.instructions,
+                'prescribed_by': f"Dr. {am.doctor.last_name} {am.doctor.first_name}",
+                'created_at': am.created_at.isoformat(),
+            })
+            
+        return Response(data)
+
+# 3. СОЗДАНИЕ ПОВТОРНОЙ ЗАПИСИ ВРАЧОМ
 class AppointmentCreateByDoctorView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1334,57 +1495,46 @@ class AppointmentCreateByDoctorView(APIView):
         try:
             doctor = Doctor.objects.get(user=request.user)
         except Doctor.DoesNotExist:
-            return Response({'success': False, 'message': 'Только врач может создавать запись'}, status=403)
+            return Response({'success': False, 'message': 'Только врач может создавать запись'}, status=status.HTTP_403_FORBIDDEN)
 
         patient_id = request.data.get('patient_id')
         date_time_str = request.data.get('date_time')
         notes = request.data.get('notes', '')
 
         if not patient_id or not date_time_str:
-            return Response({'success': False, 'message': 'patient_id и date_time обязательны'}, status=400)
+            return Response({'success': False, 'message': 'patient_id и date_time обязательны'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             patient = Patient.objects.get(id=patient_id)
         except Patient.DoesNotExist:
-            return Response({'success': False, 'message': 'Пациент не найден'}, status=404)
+            return Response({'success': False, 'message': 'Пациент не найден'}, status=status.HTTP_404_NOT_FOUND)
 
         dt = parse_datetime(date_time_str)
         if not dt:
-            return Response({'success': False, 'message': 'Неверный формат даты'}, status=400)
+            return Response({'success': False, 'message': 'Неверный формат даты'}, status=status.HTTP_400_BAD_REQUEST)
         
         if timezone.is_naive(dt):
             current_tz = timezone.get_current_timezone()
             dt = timezone.make_aware(dt, current_tz)
 
-        # 1. Проверка на выходной/праздничный день
         if dt.weekday() in [5, 6]:
-            return Response({'success': False, 'message': 'Запись на выходные дни запрещена'}, status=400)
+            return Response({'success': False, 'message': 'Запись на выходные дни запрещена'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 2. Проверка на рабочее время (с 9:00 до 18:00) и обед (13:00-14:00)
         local_time = dt.astimezone(timezone.get_current_timezone()).time()
         if not (time(9, 0) <= local_time < time(18, 0) and not (time(13, 0) <= local_time < time(14, 0))):
-            return Response({'success': False, 'message': 'Запись возможна только в рабочее время (с 9:00 до 18:00, кроме обеда)'}, status=400)
+            return Response({'success': False, 'message': 'Запись возможна только в рабочее время'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 3. Проверка: врач занят
         if Appointment.objects.filter(doctor=doctor, date_time=dt, status='scheduled').exists():
-            return Response({'success': False, 'message': 'У врача уже есть запись в это время'}, status=400)
+            return Response({'success': False, 'message': 'У врача уже есть запись в это время'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 4. Проверка: пациент занят
         if Appointment.objects.filter(patient=patient, date_time=dt, status='scheduled').exists():
-            return Response({'success': False, 'message': 'У пациента уже есть запись в это время'}, status=400)
+            return Response({'success': False, 'message': 'У пациента уже есть запись в это время'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Создаём запись
         appointment = Appointment.objects.create(
-            patient=patient,
-            doctor=doctor,
-            date_time=dt,
-            notes=notes,
+            patient=patient, doctor=doctor, date_time=dt, notes=notes,
             status='scheduled',
             room_number=doctor.office_number if hasattr(doctor, 'office_number') else None
         )
 
-        return Response({
-            'success': True,
-            'message': 'Повторная запись создана',
-            'appointment': { 'id': appointment.id }
-        })
+        return Response({'success': True, 'message': 'Повторная запись создана', 'appointment': {'id': appointment.id}})
+

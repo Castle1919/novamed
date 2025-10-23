@@ -109,6 +109,20 @@ export default function MainDoctorMainPatients() {
 				new Date(a.date_time) - new Date(b.date_time)
 			);
 
+			const statusOrder = { 'scheduled': 1, 'completed': 2, 'cancelled': 3 };
+        appointmentsData.sort((a, b) => {
+            const orderA = statusOrder[a.status] || 4;
+            const orderB = statusOrder[b.status] || 4;
+
+            // Сначала по статусу
+            if (orderA !== orderB) {
+                return orderA - orderB;
+            }
+            
+            // Если статусы одинаковые, то по времени
+            return new Date(a.date_time) - new Date(b.date_time);
+        });
+
 			setAppointments(appointmentsData);
 		} catch (err) {
 			console.error('Error fetching appointments:', err);
@@ -154,7 +168,7 @@ export default function MainDoctorMainPatients() {
 						backgroundColor: 'transparent',
 						right: '50%',
 						transform: 'translateX(50%)',
-						top: '32px',
+						top: '20px',
 						pointerEvents: 'none',
 					},
 				}}
@@ -208,8 +222,7 @@ export default function MainDoctorMainPatients() {
 
 	return (
 		<div className="div-for-calendar-and-patients">
-			{/* Календарь */}
-			<div className="calendar" style={{ position: 'relative' }}>
+			<div className="calendar">
 				<LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
 					<DemoContainer components={['DateCalendar']}>
 						<DemoItem>
@@ -224,74 +237,34 @@ export default function MainDoctorMainPatients() {
 					</DemoContainer>
 				</LocalizationProvider>
 
-				{/* Кнопка для показа легенды */}
 				<Button
 					size="small"
 					onClick={() => setShowLegend(!showLegend)}
 					startIcon={showLegend ? <ExpandLessIcon /> : <InfoOutlinedIcon />}
-					sx={{
-						mt: 1,
-						width: '100%',
-						textTransform: 'none',
-					}}
+					sx={{ mt: 1, width: '100%', textTransform: 'none' }}
 				>
 					{showLegend ? 'Скрыть обозначения' : 'Показать обозначения'}
 				</Button>
 
-				{/* Выдвижная легенда с абсолютным позиционированием */}
-				{showLegend && (
-					<Box sx={{
-						position: 'absolute',
-						bottom: 60,
-						left: 0,
-						right: 0,
-						p: 1.5,
-						bgcolor: 'white',
-						borderRadius: 1,
-						boxShadow: 3,
-						border: '1px solid #e0e0e0',
-						zIndex: 1000,
-					}}>
-						<Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600, fontSize: '0.7rem' }}>
-							Обозначения:
-						</Typography>
-						<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-								<Box sx={{
-									width: 12,
-									height: 12,
-									bgcolor: '#e8f5e9',
-									border: '2px solid #4caf50',
-									borderRadius: '2px',
-									flexShrink: 0
-								}} />
-								<Typography variant="caption" sx={{ fontSize: '0.65rem' }}>Сегодня</Typography>
-							</Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-								<Box sx={{
-									width: 12,
-									height: 12,
-									bgcolor: '#ef5350', // Более контрастный цвет
-									borderRadius: '2px',
-									flexShrink: 0
-								}} />
-								<Typography variant="caption" sx={{ fontSize: '0.65rem' }}>Выходные/Праздники</Typography>
-							</Box>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-								<Typography variant="caption" sx={{ color: '#1976d2', fontSize: '0.9rem', lineHeight: 1 }}>●</Typography>
-								<Typography variant="caption" sx={{ fontSize: '0.65rem' }}>Есть записи</Typography>
-							</Box>
-						</Box>
+				<Collapse in={showLegend}>
+					<Box sx={{ mt: 1, p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
+						{/* ...содержимое легенды... */}
 					</Box>
-				)}
+				</Collapse>
 			</div>
 
 			<Divider orientation="vertical" flexItem />
 
-			<div className="patients-history">
+			<div className="reception-container">
+				<Box sx={{ mb: 2, p: 2, bgcolor: '#f0f4f8', borderRadius: 2 }}>
+					<Typography variant="h6" sx={{ fontWeight: 600 }}>
+						Записи на {selectedDate.format('DD MMMM YYYY')}
+					</Typography>
+				</Box>
+
 				{error && (
-					<Box sx={{ p: 2, bgcolor: '#ffebee', borderRadius: 1, mb: 2, border: '1px solid #ef5350' }}>
-						<Typography color="error" variant="body2">⚠️ {error}</Typography>
+					<Box sx={{ p: 2, bgcolor: '#ffebee', borderRadius: 1, mb: 2 }}>
+						<Typography color="error">{error}</Typography>
 					</Box>
 				)}
 
@@ -305,129 +278,67 @@ export default function MainDoctorMainPatients() {
 						<Typography variant="body1" color="text.secondary">
 							На выбранную дату записей нет
 						</Typography>
-						<Typography variant="caption" color="text.secondary">
-							Выберите другую дату в календаре
-						</Typography>
 					</Box>
 				) : (
-					appointments.map((appointment) => (
-						<Box
-							key={appointment.id}
-							sx={{
-								p: 1.5,
-								mb: 1,
-								borderRadius: 2,
-								boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-								bgcolor: '#fff',
-								border: '1px solid #e0e0e0',
-								display: 'flex',
-								alignItems: 'center',
-								gap: 2,
-								transition: 'all 0.2s',
-								'&:hover': {
-									boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
-									borderColor: blue[500],
-								}
-							}}
-						>
-							{/* Время */}
-							<Box sx={{
-								display: 'flex',
-								alignItems: 'center',
-								gap: 0.5,
-								minWidth: '70px',
-								bgcolor: '#f5f5f5',
-								p: 1,
-								borderRadius: 1,
-							}}>
-								<AccessTimeIcon fontSize="small" color="primary" />
-								<Typography variant="body2" fontWeight="600">
-									{dayjs(appointment.date_time).format('HH:mm')}
-								</Typography>
-							</Box>
+					<div className="reception-grid">
+    {appointments.map((appointment) => (
+        <div className="reception-card" key={appointment.id}>
+            <div className="reception-card-time">
+                <AccessTimeIcon fontSize="small" />
+                {dayjs(appointment.date_time).format('HH:mm')}
+            </div>
 
-							{/* Аватар */}
-							<img
-								src={appointment.patient_details?.avatar || userIcon}
-								alt="Patient"
-								style={{
-									width: 40,
-									height: 40,
-									borderRadius: '50%',
-									objectFit: 'cover',
-									border: '2px solid #e0e0e0'
-								}}
-							/>
+            <img 
+                src={appointment.patient_details?.avatar || userIcon} 
+                alt="Patient" 
+                className="reception-card-avatar"
+            />
 
-							{/* Информация о пациенте */}
-							<Box sx={{ flex: 1 }}>
-								<Typography variant="body1" fontWeight="600">
-									{appointment.patient_details?.first_name} {appointment.patient_details?.last_name}
-								</Typography>
-								<Box sx={{ display: 'flex', gap: 2, mt: 0.5 }}>
-									{appointment.patient_details?.phone && (
-										<Typography variant="caption" color="text.secondary">
-											📞 {appointment.patient_details.phone}
-										</Typography>
-									)}
-									{appointment.patient_details?.age && (
-										<Typography variant="caption" color="text.secondary">
-											{appointment.patient_details.age} лет
-										</Typography>
-									)}
-								</Box>
-								{appointment.notes && (
-									<Typography variant="caption" color="text.secondary" sx={{
-										display: 'block',
-										mt: 0.5,
-										overflow: 'hidden',
-										textOverflow: 'ellipsis',
-										whiteSpace: 'nowrap',
-									}}>
-										📋 {appointment.notes}
-									</Typography>
-								)}
-							</Box>
+            <div className="reception-card-info">
+                <h3>
+                    {appointment.patient_details?.first_name || 'Имя'} {appointment.patient_details?.last_name || 'Фамилия'}
+                </h3>
+                <p>
+                    {appointment.notes ? `Жалобы: ${appointment.notes}` : 'Жалобы не указаны'}
+                </p>
+                
+                {/* Дополнительные детали */}
+                <div className="reception-card-details">
+                    <span>📞 {appointment.patient_details?.phone || 'нет номера'}</span>
+                    <span>👤 {appointment.patient_details?.age || '?'} лет</span>
+                    <span>🚪 Кабинет: {appointment.room_number || 'не указан'}</span>
+                </div>
+            </div>
 
-							{/* Статус */}
-							<Chip
-								label={
-									appointment.status === 'scheduled' ? 'Запланировано' :
-										appointment.status === 'completed' ? 'Завершено' :
-											appointment.status === 'cancelled' ? 'Отменено' :
-												appointment.status
-								}
-								color={
-									appointment.status === 'scheduled' ? 'primary' :
-										appointment.status === 'completed' ? 'success' :
-											appointment.status === 'cancelled' ? 'error' :
-												'default'
-								}
-								size="small"
-							/>
+            <Chip 
+                label={appointment.status === 'scheduled' ? 'Ожидает' : 'Завершён'}
+                color={appointment.status === 'scheduled' ? 'primary' : 'success'}
+                size="small"
+                sx={{ mx: 2 }}
+            />
 
-							{/* Кнопка действия */}
-							<ColorButton
-								variant="contained"
-								size="small"
-								disabled={appointment.status !== 'scheduled'}
-								onClick={() => handleStartReception(appointment)}
-							>
-								{appointment.status === 'scheduled' ? 'Принять' : 'Завершён'}
-							</ColorButton>
-							<PatientReceptionModal
-								open={receptionOpen}
-								onClose={handleReceptionClose}
-								appointment={selectedAppointment}
-								onFollowupCreated={() => { loadAllAppointments(); fetchAppointmentsByDate(selectedDate); }}
-								doctorProfile={profile}
-								allAppointments={allAppointments}
-
-							/>
-						</Box>
-					))
+            <ColorButton 
+                variant="contained" 
+                size="small"
+                disabled={appointment.status !== 'scheduled'}
+                onClick={() => handleStartReception(appointment)}
+            >
+                {appointment.status === 'scheduled' ? 'Принять' : 'Завершён'}
+            </ColorButton>
+        </div>
+    ))}
+</div>
 				)}
 			</div>
+
+			<PatientReceptionModal
+				open={receptionOpen}
+				onClose={handleReceptionClose}
+				onFollowupCreated={() => { loadAllAppointments(); fetchAppointmentsByDate(selectedDate); }}
+				appointment={selectedAppointment}
+				doctorProfile={profile}
+				allAppointments={allAppointments}
+			/>
 		</div>
 	);
 }

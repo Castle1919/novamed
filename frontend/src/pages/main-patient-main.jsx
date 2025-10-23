@@ -20,7 +20,7 @@ import Avatar from '@mui/material/Avatar';
 import { blue } from '@mui/material/colors';
 import { styled } from '@mui/material/styles';
 
-export default function MainPatientMain() {
+const MainPatientMainComponent = () => {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [isModalLoginOpen, setIsModalLoginOpen] = useState(false);
 	const [isModalServiceOpen, setIsModalServiceOpen] = useState(false);
@@ -201,7 +201,10 @@ export default function MainPatientMain() {
 			{isModalLoginOpen && <LoginModal onClose={handleCloseModalLogin} />}
 			{isModalServiceOpen && <ServiceModal onClose={handleCloseModalService} />}
 			{isModalContactsOpen && <ContactsModal onClose={handleCloseModalContacts} />}
-		</>
-	);
-}
+		</>)
+};
+
+
+const MainPatientMain = React.memo(MainPatientMainComponent);
+export default MainPatientMain;
 

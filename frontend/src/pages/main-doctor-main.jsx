@@ -41,10 +41,7 @@ export default function MainDoctorMain() {
 		const token = getAccessToken();
 		const role = getUserRole();
 		
-		console.log('MainDoctorMain: token exists:', !!token, 'role:', role);
-
 		if (!token) {
-			console.warn('No token found, redirecting to login...');
 			navigate('/doctor');
 			return;
 		}
@@ -56,36 +53,25 @@ export default function MainDoctorMain() {
 				if (role === 'doctor') {
 					try {
 						const res = await api.get('/doctors/me/');
-						const { first_name, last_name } = res.data;
+						const { id, first_name, last_name } = res.data;
 						
-						// Проверяем, заполнены ли обязательные поля
 						if (!first_name || !last_name) {
-							console.log('Doctor profile incomplete, redirecting to profile edit...');
 							navigate('/doctor/main/profile?force=true');
 							return;
 						}
 						
-						setProfile({ first_name, last_name });
-						console.log('Doctor profile loaded:', { first_name, last_name });
+						// Сохраняем ID, имя и фамилию
+						setProfile({ id, first_name, last_name });
+						
 					} catch (err) {
 						if (err.response && err.response.status === 404) {
-							console.log('Doctor profile not found, redirecting to create...');
 							navigate('/doctor/main/profile?force=true');
 						} else {
 							console.error('Error loading doctor profile:', err);
 						}
 					}
 				} else {
-					// Если роль не doctor, загружаем базовый профиль
-					try {
-						const res = await api.get('/accounts/profile/');
-						setProfile({ 
-							first_name: res.data.username || res.data.email, 
-							last_name: '' 
-						});
-					} catch (err) {
-						console.error('Error loading user profile:', err);
-					}
+					// Если роль не doctor - здесь не должно быть
 				}
 			} finally {
 				setLoading(false);
