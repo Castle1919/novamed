@@ -9,10 +9,16 @@ class User(AbstractUser):
     (Пациент, Доктор) и JWT аутентификацией через email.
     """
     email = models.EmailField(_('email address'), unique=True)
-    phone = models.CharField(max_length=20, blank=True, null=True)
     avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     is_doctor = models.BooleanField(default=False)
     is_patient = models.BooleanField(default=True)
+    
+    phone = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name='Телефон')
+    phone_verified = models.BooleanField(default=False, verbose_name='Телефон подтвержден')
+    
+    
+    email = models.EmailField(unique=True, verbose_name='Email')
+    email_verified = models.BooleanField(default=False, verbose_name='Email подтвержден')
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

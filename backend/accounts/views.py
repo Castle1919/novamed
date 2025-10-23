@@ -1,105 +1,120 @@
-from rest_framework import generics, permissions
+from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.contrib.auth.tokens import default_token_generator
+from rest_framework import serializers
+from rest_framework import generics, permissions, status
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
-from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer, MyTokenObtainPairSerializer, UserSerializer
-from rest_framework_simplejwt.views import TokenObtainPairView
-from .serializers import MyTokenObtainPairSerializer
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from django.contrib.auth import get_user_model
+from .serializers import RegisterSerializer, UserSerializer
 from patients.models import Patient
-from django.utils import timezone
+import logging
 import random
 from datetime import date
-import logging
 
 User = get_user_model()
 
+# --- ФУНКЦИЯ ОТПРАВКИ ПИСЬМА ---
+def send_activation_email(user, request):
+    token = default_token_generator.make_token(user)
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    
+    frontend_url = 'http://localhost:3000' # В реальном проекте - из настроек
+    activation_link = f"{frontend_url}/activate/{uid}/{token}"
 
+    subject = 'Активация аккаунта в NovaMed'
+    message = f"""Здравствуйте, {user.first_name or user.username}!
+
+Чтобы активировать ваш аккаунт в NovaMed, перейдите по ссылке:
+{activation_link}
+
+С уважением,
+Команда NovaMed
+"""
+    try:
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+        print(f"Письмо для активации отправлено на {user.email}")
+    except Exception as e:
+        print(f"Ошибка при отправке письма для активации: {e}")
+
+
+# --- VIEWS ДЛЯ РЕГИСТРАЦИИ И АКТИВАЦИИ ---
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = RegisterSerializer
+
+    def perform_create(self, serializer):
+        user = serializer.save(is_active=False, is_patient=True)
+        send_activation_email(user, self.request)
+
+class ActivateUserView(APIView):
+    permission_classes = (permissions.AllowAny,)
+    
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            if not user.is_active:
+                user.is_active = True
+                user.email_verified = True
+                user.save()
+                
+                if not Patient.objects.filter(user=user).exists():
+                    Patient.objects.create(
+                        user=user, first_name=user.first_name, last_name=user.last_name,
+                        birth_date=date(2000, 1, 1), gender='M',
+                        iin=''.join([str(random.randint(0, 9)) for _ in range(12)])
+                    )
+                return Response({'success': True, 'message': 'Аккаунт успешно активирован!'})
+            else:
+                return Response({'success': True, 'message': 'Аккаунт уже был активирован.'})
+        else:
+            return Response({'success': False, 'message': 'Ссылка для активации недействительна.'}, status=400)
+
+
+# --- VIEWS ДЛЯ ВХОДА И ПРОФИЛЯ ---
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
-    """
-    Кастомный сериализатор токена с добавлением роли пользователя.
-    """
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
-        token['username'] = user.username
-        token['email'] = user.email
-        token['role'] = (
-            'doctor' if getattr(user, 'is_doctor', False)
-            else 'patient' if getattr(user, 'is_patient', False)
-            else 'user'
-        )
+        token['role'] = 'doctor' if user.is_doctor else 'patient'
         return token
 
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # ВАЖНО: Проверяем, что пользователь активен
+        if not self.user.is_active:
+            raise serializers.ValidationError("Пожалуйста, активируйте ваш аккаунт, проверив почту.")
+            
+        data['email'] = self.user.email
+        data['role'] = 'doctor' if self.user.is_doctor else 'patient'
+        return data
 
-class RegisterView(generics.CreateAPIView):
-    """
-    Регистрация нового пользователя.
-    """
-    queryset = User.objects.all()
-    permission_classes = [permissions.AllowAny]
-    serializer_class = RegisterSerializer
-
-
-class LoginView(TokenObtainPairView):
-    """
-    Вход пользователя с выдачей JWT токенов.
-    """
+class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
+# --- ВОЗВРАЩАЕМ LoginView ---
+class LoginView(MyTokenObtainPairView):
+    """
+    Вход пользователя с выдачей JWT токенов.
+    Это просто алиас для MyTokenObtainPairView для вашего urls.py
+    """
+    pass
 
 class UserDetailView(generics.RetrieveAPIView):
-    """
-    Просмотр данных текущего пользователя.
-    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         return self.request.user
-
-class MyTokenObtainPairView(TokenObtainPairView):
-    """
-    Кастомный view для входа.
-    Создает профиль пациента, если его нет.
-    """
-    serializer_class = MyTokenObtainPairSerializer
-
-    def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
-
-        try:
-            username = request.data.get('username') or request.data.get('email')
-            user = User.objects.filter(username=username).first()
-            if not user:
-                return response
-
-            # Если пользователь — пациент, создаем профиль при первом входе
-            if getattr(user, 'is_patient', False):
-                if not Patient.objects.filter(user=user).exists():
-                    def gen_iin():
-                        return ''.join([str(random.randint(0, 9)) for _ in range(12)])
-
-                    iin = gen_iin()
-                    while Patient.objects.filter(iin=iin).exists():
-                        iin = gen_iin()
-
-                    Patient.objects.create(
-                        user=user,
-                        first_name=user.username or 'Пациент',
-                        last_name='',
-                        birth_date=date(1970, 1, 1),
-                        gender='M',
-                        iin=iin,
-                    )
-
-        except Exception as e:
-            logging.exception("Ошибка при создании профиля пациента: %s", e)
-
-        return response
-
-
-
-

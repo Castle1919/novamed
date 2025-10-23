@@ -30,9 +30,11 @@ from datetime import datetime, timedelta, time, date
 from django.utils.dateparse import parse_date
 from django.utils.dateparse import parse_datetime
 from django.db.models import Count, Q, Case, When, Value, IntegerField
-
-
-
+from .sms_service import send_sms
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
 
 
 # ===== CUSTOM PERMISSIONS =====
@@ -779,126 +781,6 @@ class DoctorAppointmentsByDateView(APIView):
             })
         
         return Response(data)
-    
-# Завершение приема
-class CompleteAppointmentView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def post(self, request, appointment_id):
-        try:
-            doctor = Doctor.objects.get(user=request.user)
-        except Doctor.DoesNotExist:
-            return Response({'error': 'Только врачи могут завершать прием'}, status=403)
-        
-        try:
-            appointment = Appointment.objects.get(id=appointment_id, doctor=doctor)
-        except Appointment.DoesNotExist:
-            return Response({'error': 'Запись не найдена'}, status=404)
-        
-        if appointment.status == 'completed':
-            return Response({'error': 'Прием уже завершен'}, status=400)
-        
-        # Данные из формы
-        diagnosis = request.data.get('diagnosis')
-        complaints = request.data.get('complaints', '')
-        anamnesis = request.data.get('anamnesis', '')
-        objective_data = request.data.get('objective_data', '')
-        recommendations = request.data.get('recommendations', '')
-        prescriptions_data = request.data.get('prescriptions', [])
-        doctor_notes = request.data.get('doctor_notes', '')
-        schedule_followup = request.data.get('schedule_followup', False)
-        followup_date_str = request.data.get('followup_date')
-        
-        if not diagnosis:
-            return Response({'error': 'Диагноз обязателен'}, status=400)
-        
-        # Создаем медицинскую запись
-        medical_record = MedicalRecord.objects.create(
-            appointment=appointment,
-            complaints=complaints,
-            anamnesis=anamnesis,
-            objective_data=objective_data,
-            diagnosis=diagnosis,
-            recommendations=recommendations
-        )
-        
-        # Создаем рецепты и активные препараты
-        for presc in prescriptions_data:
-            medicine_id = presc.get('medicine_id')
-            if not medicine_id:
-                continue
-            
-            try:
-                medicine = Medicine.objects.get(id=medicine_id)
-            except Medicine.DoesNotExist:
-                continue
-            
-            # Создаем рецепт
-            prescription = Prescription.objects.create(
-                medical_record=medical_record,
-                medicine=medicine,
-                dosage=presc.get('dosage', ''),
-                frequency=presc.get('frequency', ''),
-                duration=presc.get('duration', ''),
-                instructions=presc.get('instructions', '')
-            )
-            
-            # Создаем активный препарат для пациента
-            PatientMedicine.objects.create(
-                patient=appointment.patient,
-                doctor=doctor,
-                medicine=medicine,
-                prescription=prescription,
-                is_active=True
-            )
-        
-        # Создаем приватную заметку врача
-        if doctor_notes:
-            DoctorNote.objects.create(
-                medical_record=medical_record,
-                doctor=doctor,
-                note=doctor_notes
-            )
-        
-        # Обновляем статус записи
-        appointment.status = 'completed'
-        appointment.diagnosis = diagnosis
-        appointment.save()
-        
-        # Создаем повторную запись если нужно
-        followup_appointment = None
-        if schedule_followup and followup_date_str:
-            followup_dt = parse_datetime(followup_date_str)
-            if followup_dt:
-                if timezone.is_naive(followup_dt):
-                    followup_dt = timezone.make_aware(followup_dt, timezone.get_current_timezone())
-                
-                followup_appointment = Appointment.objects.create(
-                    patient=appointment.patient,
-                    doctor=doctor,
-                    date_time=followup_dt,
-                    notes='Повторный прием',
-                    status='scheduled',
-                    room_number=doctor.office_number if hasattr(doctor, 'office_number') else None
-                )
-        else:
-            # Если нет повторной записи - деактивируем препараты этого врача
-            PatientMedicine.objects.filter(
-                patient=appointment.patient,
-                doctor=doctor,
-                is_active=True
-            ).update(
-                is_active=False,
-                completed_date=timezone.now()
-            )
-        
-        return Response({
-            'success': True,
-            'message': 'Прием завершен',
-            'medical_record_id': medical_record.id,
-            'followup_appointment_id': followup_appointment.id if followup_appointment else None
-        })
-
 
 # Получение истории приемов пациента
 class PatientMedicalHistoryView(APIView):
@@ -982,9 +864,11 @@ class MedicineListView(APIView):
     
 
 # 1. Завершение приема с медицинской записью
+from .sms_service import send_sms # Добавьте этот импорт
+
 class CompleteAppointmentView(APIView):
     """
-    Завершение приема и создание медицинской записи
+    Завершение приема, создание мед. записи и отправка уведомлений.
     """
     permission_classes = [IsAuthenticated]
     
@@ -1002,7 +886,7 @@ class CompleteAppointmentView(APIView):
         if appointment.status == 'completed':
             return Response({'error': 'Прием уже завершен'}, status=400)
         
-        # Данные из формы
+        # --- 1. Получаем данные из запроса ---
         diagnosis = request.data.get('diagnosis')
         complaints = request.data.get('complaints', '')
         anamnesis = request.data.get('anamnesis', '')
@@ -1014,7 +898,7 @@ class CompleteAppointmentView(APIView):
         if not diagnosis:
             return Response({'error': 'Диагноз обязателен'}, status=400)
         
-        # Создаем медицинскую запись
+        # --- 2. Создаем медицинскую запись и рецепты ---
         medical_record = MedicalRecord.objects.create(
             appointment=appointment,
             complaints=complaints,
@@ -1024,7 +908,6 @@ class CompleteAppointmentView(APIView):
             recommendations=recommendations
         )
         
-        # Создаем рецепты
         for presc in prescriptions_data:
             if presc.get('medicine_id'):
                 Prescription.objects.create(
@@ -1036,7 +919,6 @@ class CompleteAppointmentView(APIView):
                     instructions=presc.get('instructions', '')
                 )
         
-        # Создаем приватную заметку врача (если есть)
         if doctor_notes:
             DoctorNote.objects.create(
                 medical_record=medical_record,
@@ -1044,17 +926,29 @@ class CompleteAppointmentView(APIView):
                 note=doctor_notes
             )
         
-        # Обновляем статус записи
+        # --- 3. Обновляем статус приема ---
         appointment.status = 'completed'
         appointment.diagnosis = diagnosis
         appointment.save()
         
+        # --- 4. Отправляем уведомления ---
+        try:
+            patient_phone = appointment.patient.phone
+            sms_message = f"Прием у Dr. {appointment.doctor.last_name} ({appointment.date_time.strftime('%d.%m')}) завершен. Диагноз: {diagnosis}. Детали на почте."
+            send_sms(patient_phone, sms_message)
+
+            # Здесь будет вызов отправки Email
+            # send_reception_summary_email(appointment, medical_record)
+            
+        except Exception as e:
+            print(f"Ошибка при отправке уведомлений для записи #{appointment.id}: {e}")
+
+        # --- 5. Возвращаем ответ ---
         return Response({
             'success': True,
             'message': 'Прием завершен',
             'medical_record_id': medical_record.id
         })
-
 
 # 2. История приемов пациента (медицинская карта)
 class PatientMedicalHistoryView(APIView):
@@ -1537,4 +1431,3 @@ class AppointmentCreateByDoctorView(APIView):
         )
 
         return Response({'success': True, 'message': 'Повторная запись создана', 'appointment': {'id': appointment.id}})
-

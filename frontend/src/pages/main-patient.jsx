@@ -6,7 +6,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { IconButton } from '@mui/material';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import RegistrModal from '../components/RegistrPatient';
+import RegistrModal from '../components/Registr';
 import LoginModal from '../components/LoginPatient';
 import ServiceModal from '../components/ModalService';
 import ContactsModal from '../components/ModalContacts'

@@ -22,9 +22,11 @@ import MainPatientMainDefault from './components/MainPatientMainDefault';
 import MainPatientMainPatients from './components/MainPatientMainPatients';
 import MainPatientMainDoctors from './components/MainPatientMainDoctors';
 import MainPatientMainAllowance from './components/MainPatientMainAllowance';
-import MainPatientMainAppointments from './components/MainPatientMainAppointments'; // ДОБАВЛЕНО
+import MainPatientMainAppointments from './components/MainPatientMainAppointments';
 import PatientProfilePage from './pages/patient-profile';
 import DoctorProfilePage from './pages/doctor-profile';
+import ActivationPage from './pages/ActivationPage';
+
 
 const router = createBrowserRouter([
 	{
@@ -113,6 +115,11 @@ const router = createBrowserRouter([
 				errorElement: <ErrorPage />,
 			},
 		],
+		
+	},
+	{
+		path: '/activate/:uid/:token',
+		element: <ActivationPage />,
 	},
 ]);
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from patients import views as patient_views
 from accounts.views import MyTokenObtainPairView, UserDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # ===== JWT Auth =====
+    path('api/accounts/', include('accounts.urls')), 
     path('api/accounts/login/', MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/accounts/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/accounts/profile/', UserDetailView.as_view(), name='user-profile'),

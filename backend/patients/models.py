@@ -35,7 +35,6 @@ class Patient(models.Model):
     height = models.FloatField(null=True, blank=True, verbose_name='Рост (см)')
     weight = models.FloatField(null=True, blank=True, verbose_name='Вес (кг)')
     iin = models.CharField(max_length=12, unique=True, verbose_name='ИИН')
-    phone = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name='Телефон')
     chronic_diseases = models.TextField(blank=True, null=True, verbose_name='Хронические заболевания')
     allergies = models.TextField(blank=True, null=True, verbose_name='Аллергии')
     blood_type = models.CharField(max_length=3, choices=BLOOD_TYPE_CHOICES, blank=True, null=True, verbose_name='Группа крови')
