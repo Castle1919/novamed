@@ -24,6 +24,7 @@ import MainPatientMainAllowance from './components/MainPatientMainAllowance';
 import MainPatientMainAppointments from './components/MainPatientMainAppointments';
 import ActivationPage from './pages/ActivationPage';
 
+
 const router = createBrowserRouter([
 	{
 		path: '/',
@@ -50,18 +51,21 @@ const router = createBrowserRouter([
 				element: <MainDoctorMainDefault />,
 			},
 			{
-				path: 'patients', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
+				path: 'patients',
 				element: <MainDoctorMainPatients />,
 			},
 			{
-				path: 'history', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
+				path: 'history',
 				element: <MainDoctorMainHistory />,
 			},
 			{
-				path: 'accounting', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
+				path: 'accounting',
 				element: <MainDoctorMainAccounting />,
 			},
-			// Маршрут 'profile' УДАЛЕН, т.к. используется модалка
+			{
+				path: 'history', // Список пациентов
+				element: <MainDoctorMainHistory />,
+			},
 		],
 	},
 	{
@@ -79,18 +83,17 @@ const router = createBrowserRouter([
 				element: <MainPatientMainDefault />,
 			},
 			{
-				path: 'doctors', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
+				path: 'doctors',
 				element: <MainPatientMainDoctors />,
 			},
 			{
-				path: 'appointments', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
+				path: 'appointments',
 				element: <MainPatientMainAppointments />,
 			},
 			{
-				path: 'allowance', // ОТНОСИТЕЛЬНЫЙ ПУТЬ
+				path: 'allowance',
 				element: <MainPatientMainAllowance />,
 			},
-			// Маршрут 'profile' УДАЛЕН, т.к. используется модалка
 		],
 	},
 ]);

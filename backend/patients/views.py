@@ -782,69 +782,6 @@ class DoctorAppointmentsByDateView(APIView):
         
         return Response(data)
 
-# Получение истории приемов пациента
-class PatientMedicalHistoryView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request, patient_id):
-        try:
-            doctor = Doctor.objects.get(user=request.user)
-        except Doctor.DoesNotExist:
-            return Response({'error': 'Только врачи имеют доступ'}, status=403)
-        
-        try:
-            patient = Patient.objects.get(id=patient_id)
-        except Patient.DoesNotExist:
-            return Response({'error': 'Пациент не найден'}, status=404)
-        
-        # Получаем все завершенные приемы
-        appointments = Appointment.objects.filter(
-            patient=patient,
-            status='completed'
-        ).select_related('doctor', 'medical_record').order_by('-date_time')
-        
-        history = []
-        for apt in appointments:
-            record_data = {
-                'appointment_id': apt.id,
-                'date': apt.date_time.isoformat(),
-                'doctor': f"{apt.doctor.last_name} {apt.doctor.first_name}",
-                'diagnosis': apt.diagnosis,
-            }
-            
-            if hasattr(apt, 'medical_record'):
-                mr = apt.medical_record
-                record_data.update({
-                    'complaints': mr.complaints,
-                    'anamnesis': mr.anamnesis,
-                    'recommendations': mr.recommendations,
-                    'prescriptions': [
-                        {
-                            'medicine': p.medicine.name,
-                            'dosage': p.dosage,
-                            'frequency': p.frequency,
-                            'duration': p.duration
-                        }
-                        for p in mr.prescriptions.all()
-                    ]
-                })
-            
-            history.append(record_data)
-        
-        return Response({
-            'patient': {
-                'id': patient.id,
-                'name': f"{patient.first_name} {patient.last_name}",
-                'birth_date': patient.birth_date,
-                'gender': patient.get_gender_display(),
-                'chronic_diseases': patient.chronic_diseases,
-                'allergies': patient.allergies,
-                'blood_type': patient.blood_type,
-            },
-            'history': history
-        })
-
-
 # Список лекарств
 class MedicineListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1047,13 +984,19 @@ class PatientMedicalHistoryView(APIView):
             'patient': {
                 'id': patient.id,
                 'name': f"{patient.first_name} {patient.last_name}",
-                'birth_date': patient.birth_date.isoformat() if patient.birth_date else None,
+                'first_name': patient.first_name,
+                'last_name': patient.last_name,
+                'birth_date': patient.birth_date,
                 'gender': patient.get_gender_display(),
+                'height': patient.height,
+                'weight': patient.weight,
+                'iin': patient.iin,
+                'phone': patient.user.phone,
                 'chronic_diseases': patient.chronic_diseases,
                 'allergies': patient.allergies,
                 'blood_type': patient.blood_type,
-                'phone': patient.phone,
-                'iin': patient.iin,
+                'insurance_number': patient.insurance_number,
+                'emergency_contact': patient.emergency_contact,
             },
             'history': history
         })

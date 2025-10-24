@@ -17,10 +17,10 @@ import KZimg from '../assets/kz.png';
 const style = {
 	position: 'absolute', top: '50%', left: '50%',
 	transform: 'translate(-50%, -50%)',
-	width: '90%', maxWidth: 500, // Увеличим ширину
+	width: '90%', maxWidth: 500,
 	bgcolor: 'background.paper', boxShadow: 24,
 	textAlign: 'center', borderRadius: 2, 
-    p: { xs: 2, sm: 3, md: 4 }, // Адаптивные отступы
+    p: { xs: 2, sm: 3, md: 4 },
 };
 
 function Registr({ onClose }) {

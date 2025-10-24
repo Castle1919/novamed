@@ -119,20 +119,28 @@ export default function MainPatientMainAppointments() {
 			</Box>
 		);
 	}
-
+	
 	if (appointments.length === 0) {
 		return (
-			<Box sx={{ textAlign: 'center', py: 8 }}>
-				<EventNoteIcon sx={{ fontSize: 80, color: '#ccc', mb: 2 }} />
-				<Typography variant="h6" color="text.secondary">
-					У вас пока нет записей
-				</Typography>
-				<Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-					Запишитесь на приём к врачу
-				</Typography>
-				<ColorButton variant="contained" href="/patient/main/doctors">
-					Записаться к врачу
-				</ColorButton>
+			<Box sx={{ 
+				display: 'flex', 
+				justifyContent: 'center', 
+				alignItems: 'center', 
+				width: '100%', 
+				height: '100%' 
+			}}>
+				<Box sx={{ textAlign: 'center' }}>
+					<EventNoteIcon sx={{ fontSize: 80, color: '#ccc', mb: 2 }} />
+					<Typography variant="h6" color="text.secondary">
+						У вас пока нет записей
+					</Typography>
+					<Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 3 }}>
+						Здесь будут отображаться ваши предстоящие и прошедшие приемы.
+					</Typography>
+					<ColorButton variant="contained" href="/patient/main/doctors">
+						Записаться к врачу
+					</ColorButton>
+				</Box>
 			</Box>
 		);
 	}

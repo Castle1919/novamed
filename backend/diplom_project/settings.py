@@ -132,13 +132,22 @@ CORS_ALLOW_ALL_ORIGINS = True
 # 
 
 # SendGrid settings (email sending)
-EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
-SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')# API-КЛЮЧ SENDGRID
-SENDGRID_SANDBOX_MODE_IN_DEBUG = False # True, если тестировать без реальной отправки
-DEFAULT_FROM_EMAIL = 'nursultan12369@gmail.com' 
+# EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
+# SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')# API-КЛЮЧ SENDGRID
+# SENDGRID_SANDBOX_MODE_IN_DEBUG = False # True, если тестировать без реальной отправки
+# DEFAULT_FROM_EMAIL = 'nursultan12369@gmail.com' 
 # =================================================================
 
 # Twilio settings (SMS sending)
-TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
-TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_ACCOUNT_TOKEN')
-TWILIO_PHONE_NUMBER = '+17759935648'
+# TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
+# TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_ACCOUNT_TOKEN')
+# TWILIO_PHONE_NUMBER = '+17759935648'
+
+# --- НАСТРОЙКИ ДЛЯ ОТПРАВКИ EMAIL ЧЕРЕЗ GMAIL ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'nursultan12369@gmail.com'
+EMAIL_HOST_PASSWORD = 'mlue ubac ilcn xdht'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER

@@ -153,7 +153,7 @@ const MainDoctorMainComponent = () => {
             <div className='wrap-for-patients-view'>
                 <div className='pat-btns'>
                     <NavLink to="/doctor/main/patients"><ColorButton variant="contained">Прием пациентов</ColorButton></NavLink>
-                    <NavLink to="/doctor/main/history"><ColorButton variant="contained">Все пациенты (ЭМК)</ColorButton></NavLink>
+                    <NavLink to="/doctor/main/history" className='for-navs'><ColorButton variant="contained">Все пациенты (ЭМК)</ColorButton></NavLink>
                     <NavLink to="/doctor/main/accounting"><ColorButton variant="contained">Склад</ColorButton></NavLink>
                 </div>
                 <div className='cont-for-patients-view'>

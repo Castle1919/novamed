@@ -3,8 +3,9 @@ from .models import *
 from accounts.models import *
 from django.utils import timezone
 from datetime import datetime, timedelta
+from accounts.models import User
 
-# Сериализатор для User, чтобы обновлять его внутри профиля
+# Сериализатор для обновления User внутри другого профиля
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
@@ -15,44 +16,42 @@ class PatientSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        fields = '__all__'
+        # Укажите все поля, которые вы хотите видеть и редактировать
+        fields = (
+            'id', 'user', 'first_name', 'last_name', 'birth_date', 'gender', 
+            'height', 'weight', 'iin', 'chronic_diseases', 'allergies', 
+            'blood_type', 'insurance_number', 'emergency_contact'
+        )
 
     def update(self, instance, validated_data):
-        # Обновляем данные User
-        user_data = validated_data.pop('user', {})
-        user = instance.user
-        user.email = user_data.get('email', user.email)
-        user.phone = user_data.get('phone', user.phone)
-        user.save()
+        # Обновляем данные User, если они пришли
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_serializer = UserProfileUpdateSerializer(instance.user, data=user_data, partial=True)
+            if user_serializer.is_valid(raise_exception=True):
+                user_serializer.save()
 
         # Обновляем остальные данные Patient
         return super().update(instance, validated_data)
 
-    def validate_iin(self, value):
-        # Ensure IIN is 12 digits
-        if value and (not value.isdigit() or len(value) != 12):
-            raise serializers.ValidationError('IIN должен содержать 12 цифр')
-        # uniqueness is enforced by model, but provide nicer error message
-        qs = Patient.objects.filter(iin=value)
-        if self.instance:
-            qs = qs.exclude(pk=self.instance.pk)
-        if qs.exists():
-            raise serializers.ValidationError('Пациент с таким ИИН уже существует')
-        return value
+class DoctorSerializer(serializers.ModelSerializer):
+    user = UserProfileUpdateSerializer()
 
-    def validate_phone(self, value):
-        if value:
-            # basic normalization: remove spaces and dashes
-            norm = ''.join(c for c in value if c.isdigit())
-            if len(norm) < 9:
-                raise serializers.ValidationError('Неверный формат телефона')
-            qs = Patient.objects.filter(phone=value)
-            if self.instance:
-                qs = qs.exclude(pk=self.instance.pk)
-            if qs.exists():
-                raise serializers.ValidationError('Пациент с таким телефоном уже существует')
-        return value
+    class Meta:
+        model = Doctor
+        fields = (
+            'id', 'user', 'first_name', 'last_name', 'birth_date', 'iin', 
+            'specialty', 'experience_years', 'work_phone', 'license_number', 
+            'department', 'working_hours', 'office_number'
+        )
 
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_serializer = UserProfileUpdateSerializer(instance.user, data=user_data, partial=True)
+            if user_serializer.is_valid(raise_exception=True):
+                user_serializer.save()
+        return super().update(instance, validated_data)
 
 class DoctorSerializer(serializers.ModelSerializer):
     user = UserProfileUpdateSerializer()
