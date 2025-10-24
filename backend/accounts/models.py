@@ -15,12 +15,17 @@ class User(AbstractUser):
     
     phone = models.CharField(max_length=20, unique=True, null=True, blank=True, verbose_name='Телефон')
     phone_verified = models.BooleanField(default=False, verbose_name='Телефон подтвержден')
+    phone_verification_code = models.CharField(max_length=6, blank=True, null=True, verbose_name='Код подтверждения телефона')
+    code_generation_time = models.DateTimeField(blank=True, null=True, verbose_name='Время генерации кода')
+
     
     email = models.EmailField(unique=True, verbose_name='Email')
     email_verified = models.BooleanField(default=False, verbose_name='Email подтвержден')
     
     otp_secret = models.CharField(max_length=32, blank=True, null=True, verbose_name='Секрет для OTP')
 
+    temp_iin = models.CharField(max_length=12, blank=True, null=True)
+    temp_specialty = models.CharField(max_length=200, blank=True, null=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']

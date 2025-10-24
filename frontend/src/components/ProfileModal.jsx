@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Modal, Box, Typography, TextField, Button, CircularProgress, Alert,
-    InputAdornment, Chip, Grid, IconButton, MenuItem, Divider
+    InputAdornment, Chip, Grid, IconButton, MenuItem, Snackbar, Divider
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import axios from '../api/axios';
@@ -27,8 +27,7 @@ export default function ProfileModal({ open, onClose, role }) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState({});
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+    const [snack, setSnack] = useState({ open: false, message: '', severity: 'info' });
 
     const [codeSent, setCodeSent] = useState(false);
     const [verificationCode, setVerificationCode] = useState('');
@@ -37,13 +36,13 @@ export default function ProfileModal({ open, onClose, role }) {
         if (open) {
             const fetchProfile = async () => {
                 setLoading(true);
-                setError(''); setSuccess(''); setCodeSent(false);
+                setCodeSent(false); // Сбрасываем состояние при открытии
                 try {
                     const endpoint = role === 'doctor' ? '/doctors/me/' : '/patients/me/';
                     const response = await axios.get(endpoint);
                     setProfile(response.data);
                 } catch (err) {
-                    setError('Не удалось загрузить профиль.');
+                    setSnack({ open: true, message: 'Не удалось загрузить профиль', severity: 'error' });
                 } finally {
                     setLoading(false);
                 }
@@ -63,7 +62,6 @@ export default function ProfileModal({ open, onClose, role }) {
 
     const handleSave = async () => {
         setSaving(true);
-        setError(''); setSuccess('');
         try {
             const payload = {
                 first_name: profile.first_name,
@@ -90,14 +88,13 @@ export default function ProfileModal({ open, onClose, role }) {
             const updateEndpoint = role === 'doctor' ? `/doctors/${profile.id}/` : `/patients/${profile.id}/`;
             await axios.patch(updateEndpoint, payload);
 
-            setSuccess('Профиль успешно обновлен!');
-            setTimeout(() => onClose(true), 1200);
+            setSnack({ open: true, message: 'Профиль успешно обновлен!', severity: 'success' });
+            setTimeout(() => onClose(true), 1500);
 
         } catch (err) {
             const errorData = err.response?.data;
             const errorMessage = errorData ? Object.entries(errorData).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : value}`).join('; ') : 'Ошибка при сохранении.';
-            setError(errorMessage);
-        } finally {
+            setSnack({ open: true, message: errorMessage, severity: 'error' });
             setSaving(false);
         }
     };
@@ -106,22 +103,28 @@ export default function ProfileModal({ open, onClose, role }) {
         try {
             await axios.post('/accounts/phone/send-verification/');
             setCodeSent(true);
-            setSuccess('Код отправлен на ваш номер телефона.');
+            setSnack({ open: true, message: 'Код отправлен на ваш номер', severity: 'info' });
         } catch (err) {
-            setError('Не удалось отправить код.');
+            setSnack({ open: true, message: 'Не удалось отправить код', severity: 'error' });
         }
     };
 
     const handleVerifyCode = async () => {
         try {
             await axios.post('/accounts/phone/verify/', { code: verificationCode });
-            setSuccess('Номер успешно подтвержден!');
-            // Обновить UI, чтобы показать, что номер верифицирован
             setProfile(p => ({ ...p, user: { ...p.user, phone_verified: true } }));
             setCodeSent(false);
+            setSnack({ open: true, message: 'Номер успешно подтвержден!', severity: 'success' });
         } catch (err) {
-            setError('Неверный код.');
+            setSnack({ open: true, message: 'Неверный код', severity: 'error' });
         }
+    };
+
+    const handleCloseSnack = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setSnack({ ...snack, open: false });
     };
 
     return (
@@ -139,17 +142,14 @@ export default function ProfileModal({ open, onClose, role }) {
                         </Box>
                     ) : (
                         <>
-                            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-                            {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-
                             <Grid container spacing={2}>
-                                <Grid item xs={12}><Divider><Chip label="Основная информация" /></Divider></Grid>
+                                <Grid item xs={12}><Divider><Chip label="Основная информация" size="small" /></Divider></Grid>
                                 <Grid item xs={12} sm={6}><TextField name="first_name" label="Имя" value={profile.first_name || ''} onChange={handleChange} fullWidth /></Grid>
                                 <Grid item xs={12} sm={6}><TextField name="last_name" label="Фамилия" value={profile.last_name || ''} onChange={handleChange} fullWidth /></Grid>
                                 <Grid item xs={12} sm={6}><TextField name="birth_date" label="Дата рождения" type="date" value={profile.birth_date || ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} /></Grid>
                                 <Grid item xs={12} sm={6}><TextField name="iin" label="ИИН" value={profile.iin || ''} onChange={handleChange} fullWidth /></Grid>
 
-                                <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Контактные данные" /></Divider></Grid>
+                                <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Контактные данные" size="small" /></Divider></Grid>
                                 <Grid item xs={12} sm={6}><TextField name="email" label="Email" value={profile.user?.email || ''} onChange={handleChange} fullWidth /></Grid>
                                 <Grid item xs={12} sm={6}>
                                     <TextField
@@ -182,7 +182,7 @@ export default function ProfileModal({ open, onClose, role }) {
 
                                 {role === 'patient' && (
                                     <>
-                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Медицинские данные" /></Divider></Grid>
+                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Медицинские данные" size="small" /></Divider></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="height" label="Рост (см)" type="number" value={profile.height || ''} onChange={handleChange} fullWidth /></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="weight" label="Вес (кг)" type="number" value={profile.weight || ''} onChange={handleChange} fullWidth /></Grid>
                                         <Grid item xs={12} sm={6}>
@@ -197,7 +197,7 @@ export default function ProfileModal({ open, onClose, role }) {
                                         </Grid>
                                         <Grid item xs={12}><TextField name="chronic_diseases" label="Хронические заболевания" value={profile.chronic_diseases || ''} onChange={handleChange} fullWidth multiline rows={2} /></Grid>
                                         <Grid item xs={12}><TextField name="allergies" label="Аллергии" value={profile.allergies || ''} onChange={handleChange} fullWidth multiline rows={2} /></Grid>
-                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Дополнительно" /></Divider></Grid>
+                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Дополнительно" size="small" /></Divider></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="insurance_number" label="Номер страховки" value={profile.insurance_number || ''} onChange={handleChange} fullWidth /></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="emergency_contact" label="Экстренный контакт" value={profile.emergency_contact || ''} onChange={handleChange} fullWidth /></Grid>
                                     </>
@@ -205,7 +205,7 @@ export default function ProfileModal({ open, onClose, role }) {
 
                                 {role === 'doctor' && (
                                     <>
-                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Профессиональные данные" /></Divider></Grid>
+                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Профессиональные данные" size="small" /></Divider></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="specialty" label="Специализация" value={profile.specialty || ''} onChange={handleChange} fullWidth /></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="experience_years" label="Стаж (лет)" type="number" value={profile.experience_years || ''} onChange={handleChange} fullWidth /></Grid>
                                         <Grid item xs={12} sm={6}><TextField name="work_phone" label="Рабочий телефон" value={profile.work_phone || ''} onChange={handleChange} fullWidth /></Grid>
@@ -225,6 +225,17 @@ export default function ProfileModal({ open, onClose, role }) {
                         {saving ? <CircularProgress size={24} /> : 'Сохранить'}
                     </Button>
                 </Box>
+
+                <Snackbar
+                    open={snack.open}
+                    autoHideDuration={6000}
+                    onClose={handleCloseSnack}
+                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+                >
+                    <Alert onClose={handleCloseSnack} severity={snack.severity} sx={{ width: '100%' }}>
+                        {snack.message}
+                    </Alert>
+                </Snackbar>
             </Box>
         </Modal>
     );

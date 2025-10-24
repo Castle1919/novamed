@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style> body { font-family: sans-serif; } .container { padding: 20px; border: 1px solid #ddd; border-radius: 5px; } </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Здравствуйте, {{ patient_name }}!</h2>
+        <p>Вы успешно записаны на прием в клинику NovaMed.</p>
+        <hr>
+        <p><strong>Врач:</strong> {{ doctor_name }} ({{ doctor_specialty }})</p>
+        <p><strong>Дата:</strong> {{ appointment_date }}</p>
+        <p><strong>Время:</strong> {{ appointment_time }}</p>
+        <p><strong>Кабинет:</strong> {{ room_number }}</p>
+        <hr>
+        <p>Пожалуйста, приходите за 10 минут до начала приема. Если ваши планы изменятся, отмените запись в личном кабинете.</p>
+        <p>С уважением,<br>Команда NovaMed</p>
+    </div>
+</body>
+</html>

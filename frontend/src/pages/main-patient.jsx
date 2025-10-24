@@ -17,7 +17,7 @@ import ImgMain from '../assets/patient-page.png';
 import { NavLink, Outlet } from "react-router-dom";
 
 
-function App() {
+function MainPatient() {
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [isModalLoginOpen, setIsModalLoginOpen] = useState(false);
 	const [isModalServiceOpen, setIsModalServiceOpen] = useState(false);
@@ -108,12 +108,16 @@ function App() {
 			</div>
 			{/* <Outlet /> */}
 			<Footer></Footer>
-			{isModalOpen && <RegistrModal onClose={handleCloseModal} />}
+			{isModalOpen && <RegistrModal onClose={handleCloseModal} role="patient" />}
+			{isModalLoginOpen && <LoginModal onClose={handleCloseModalLogin} role="patient" />}
+
+			{/* {isModalOpen && <RegistrModal onClose={handleCloseModal} />}
 			{isModalLoginOpen && <LoginModal onClose={handleCloseModalLogin} />}
+			 */}
 			{isModalServiceOpen && <ServiceModal onClose={handleCloseModalService} />}
 			{isModalContactsOpen && <ContactsModal onClose={handleCloseModalContacts} />}
 		</>
 	);
 }
 
-export default App;
+export default MainPatient;

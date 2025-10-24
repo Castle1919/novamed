@@ -1,9 +1,17 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotFound, PermissionDenied
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from datetime import datetime, timedelta, time, date
+from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_datetime
+from django.db.models import Count, Q, Case, When, Value, IntegerField, CharField
+from .sms_service import send_sms
+from .email_service import send_appointment_confirmation_email
+from .email_service import send_reception_summary_email
 from .models import (
     Patient, 
     Doctor,
@@ -25,18 +33,9 @@ from .serializers import (
     AppointmentDetailSerializer,
     
 )
-from django.utils import timezone
-from datetime import datetime, timedelta, time, date
-from django.utils.dateparse import parse_date
-from django.utils.dateparse import parse_datetime
-from django.db.models import Count, Q, Case, When, Value, IntegerField
-from .sms_service import send_sms
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.response import Response
-from rest_framework import status, generics, permissions, serializers
-from patients.tasks import cancel_missed_appointments_for_doctor
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
+
+
 
 # ===== CUSTOM PERMISSIONS =====
 class IsDoctorUser(permissions.BasePermission):
@@ -70,10 +69,22 @@ class PatientListView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-class PatientDetailView(generics.RetrieveUpdateDestroyAPIView):
+class PatientDetailView(generics.RetrieveUpdateAPIView):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def perform_update(self, serializer):
+        # Обновляем данные User отдельно
+        user_data = self.request.data.get('user')
+        if user_data:
+            user = serializer.instance.user
+            user.email = user_data.get('email', user.email)
+            user.phone = user_data.get('phone', user.phone)
+            user.save()
+        
+        # Сохраняем остальные данные Patient
+        serializer.save()
 
 
 class MyPatientView(generics.RetrieveUpdateAPIView):
@@ -81,11 +92,76 @@ class MyPatientView(generics.RetrieveUpdateAPIView):
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_object(self):
+    def get(self, request):
         try:
-            return Patient.objects.get(user=self.request.user)
+            patient = Patient.objects.select_related('user').get(user=request.user)
+            serializer = PatientSerializer(patient)
+            return Response(serializer.data)
         except Patient.DoesNotExist:
-            raise NotFound("Профиль пациента не найден для текущего пользователя")
+            return Response({"error": "Профиль пациента не найден"}, status=404)
+        
+
+class MyDoctorView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            doctor = Doctor.objects.select_related('user').get(user=request.user)
+            serializer = DoctorSerializer(doctor)
+            return Response(serializer.data)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Профиль врача не найден"}, status=404)
+
+    def patch(self, request):
+        try:
+            doctor = Doctor.objects.get(user=request.user)
+            serializer = DoctorSerializer(doctor, data=request.data, partial=True)
+            if serializer.is_valid(raise_exception=True):
+                serializer.save()
+                return Response(serializer.data)
+        except Doctor.DoesNotExist:
+            return Response({"error": "Профиль врача не найден"}, status=404)
+        except Exception as e:
+            return Response({"error": str(e)}, status=400)
+
+    def get_object(self):
+        user = self.request.user
+        
+        # Проверяем, что пользователь - врач
+        if not getattr(user, 'is_doctor', False):
+            raise PermissionDenied("Текущий пользователь не является врачом")
+        
+        try:
+            return Doctor.objects.get(user=user)
+        except Doctor.DoesNotExist:
+            # Возвращаем 404, фронтенд обработает это и предложит создать профиль
+            raise NotFound("Профиль врача не найден")
+
+    def put(self, request, *args, **kwargs):
+        """PUT запрос - обновить или создать профиль"""
+        user = request.user
+        
+        if not getattr(user, 'is_doctor', False):
+            return Response(
+                {"detail": "Текущий пользователь не является врачом"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        try:
+            # Пытаемся найти существующий профиль
+            doctor = Doctor.objects.get(user=user)
+            serializer = self.get_serializer(doctor, data=request.data)
+        except Doctor.DoesNotExist:
+            # Если профиля нет - создаем новый
+            serializer = self.get_serializer(data=request.data)
+        
+        serializer.is_valid(raise_exception=True)
+        
+        # Сохраняем с привязкой к пользователю
+        doctor = serializer.save(user=user)
+        
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 
 
 class PatientMeView(APIView):
@@ -141,88 +217,14 @@ class DoctorDetailView(generics.RetrieveUpdateAPIView):
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-
-class MyDoctorView(generics.RetrieveUpdateAPIView):
-    """
-    Получить или обновить профиль текущего врача.
-    GET - получить профиль
-    PUT/PATCH - обновить профиль
-    POST (через perform_create) - создать профиль, если его нет
-    """
-    serializer_class = DoctorSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        user = self.request.user
-        
-        # Проверяем, что пользователь - врач
-        if not getattr(user, 'is_doctor', False):
-            raise PermissionDenied("Текущий пользователь не является врачом")
-        
-        try:
-            return Doctor.objects.get(user=user)
-        except Doctor.DoesNotExist:
-            # Возвращаем 404, фронтенд обработает это и предложит создать профиль
-            raise NotFound("Профиль врача не найден")
-
-    def get(self, request, *args, **kwargs):
-        """GET запрос - получить профиль врача"""
-        try:
-            doctor = self.get_object()
-            serializer = self.get_serializer(doctor)
-            return Response(serializer.data)
-        except NotFound as e:
-            return Response(
-                {"detail": str(e)}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-    def put(self, request, *args, **kwargs):
-        """PUT запрос - обновить или создать профиль"""
-        user = request.user
-        
-        if not getattr(user, 'is_doctor', False):
-            return Response(
-                {"detail": "Текущий пользователь не является врачом"}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        try:
-            # Пытаемся найти существующий профиль
-            doctor = Doctor.objects.get(user=user)
-            serializer = self.get_serializer(doctor, data=request.data)
-        except Doctor.DoesNotExist:
-            # Если профиля нет - создаем новый
-            serializer = self.get_serializer(data=request.data)
-        
-        serializer.is_valid(raise_exception=True)
-        
-        # Сохраняем с привязкой к пользователю
-        doctor = serializer.save(user=user)
-        
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def patch(self, request, *args, **kwargs):
-        """PATCH запрос - частичное обновление или создание"""
-        user = request.user
-        
-        if not getattr(user, 'is_doctor', False):
-            return Response(
-                {"detail": "Текущий пользователь не является врачом"}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
-        try:
-            doctor = Doctor.objects.get(user=user)
-            serializer = self.get_serializer(doctor, data=request.data, partial=True)
-        except Doctor.DoesNotExist:
-            # При частичном обновлении, если профиля нет - создаем с переданными данными
-            serializer = self.get_serializer(data=request.data)
-        
-        serializer.is_valid(raise_exception=True)
-        doctor = serializer.save(user=user)
-        
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    def perform_update(self, serializer):
+        user_data = self.request.data.get('user')
+        if user_data:
+            user = serializer.instance.user
+            user.email = user_data.get('email', user.email)
+            user.phone = user_data.get('phone', user.phone)
+            user.save()
+        serializer.save()
 
 
 class DoctorMeView(APIView):
@@ -412,6 +414,8 @@ class AppointmentCreateView(APIView):
             status='scheduled',
             room_number=doctor.office_number
         )
+        send_appointment_confirmation_email(appointment)
+
         
         return Response({
             'success': True,
@@ -431,10 +435,6 @@ class AppointmentCreateView(APIView):
             }
         })
 
-from django.db.models import Case, When, Value, IntegerField, CharField, Q
-from django.utils import timezone
-from .models import Patient, Doctor, Appointment # Убедитесь, что все импортированы
-
 class MyAppointmentsView(APIView):
     """
     Получить записи текущего пользователя (пациента или врача)
@@ -451,7 +451,6 @@ class MyAppointmentsView(APIView):
             
             queryset = Appointment.objects.filter(doctor=doctor)
             if date_str:
-                from django.utils.dateparse import parse_date
                 target_date = parse_date(date_str)
                 if target_date:
                     queryset = queryset.filter(date_time__date=target_date)
@@ -841,7 +840,6 @@ class MedicineListView(APIView):
     
 
 # 1. Завершение приема с медицинской записью
-from .sms_service import send_sms # Добавьте этот импорт
 
 class CompleteAppointmentView(APIView):
     """
@@ -887,14 +885,16 @@ class CompleteAppointmentView(APIView):
         
         for presc in prescriptions_data:
             if presc.get('medicine_id'):
-                Prescription.objects.create(
-                    medical_record=medical_record,
-                    medicine_id=presc.get('medicine_id'),
-                    dosage=presc.get('dosage', ''),
-                    frequency=presc.get('frequency', ''),
-                    duration=presc.get('duration', ''),
-                    instructions=presc.get('instructions', '')
-                )
+                # Валидация, что такой препарат существует
+                if Medicine.objects.filter(id=presc.get('medicine_id')).exists():
+                    Prescription.objects.create(
+                        medical_record=medical_record,
+                        medicine_id=presc.get('medicine_id'),
+                        dosage=presc.get('dosage', ''),
+                        frequency=presc.get('frequency', ''),
+                        duration=presc.get('duration', ''),
+                        instructions=presc.get('instructions', '')
+                    )
         
         if doctor_notes:
             DoctorNote.objects.create(
@@ -910,15 +910,18 @@ class CompleteAppointmentView(APIView):
         
         # --- 4. Отправляем уведомления ---
         try:
-            patient_phone = appointment.patient.phone
-            sms_message = f"Прием у Dr. {appointment.doctor.last_name} ({appointment.date_time.strftime('%d.%m')}) завершен. Диагноз: {diagnosis}. Детали на почте."
-            send_sms(patient_phone, sms_message)
+            # Email с полным отчетом
+            send_reception_summary_email(appointment, medical_record)
 
-            # Здесь будет вызов отправки Email
-            # send_reception_summary_email(appointment, medical_record)
-            
+            # SMS с кратким итогом
+            patient_phone = appointment.patient.user.phone # Берем телефон из User
+            if patient_phone:
+                sms_message = f"Прием у Dr. {appointment.doctor.last_name} ({appointment.date_time.strftime('%d.%m')}) завершен. Диагноз: {diagnosis}. Детали на почте."
+                send_sms(patient_phone, sms_message)
+
         except Exception as e:
-            print(f"Ошибка при отправке уведомлений для записи #{appointment.id}: {e}")
+            # Логируем ошибку, но не прерываем основной процесс
+            print(f"ОШИБКА при отправке уведомлений для записи #{appointment.id}: {e}")
 
         # --- 5. Возвращаем ответ ---
         return Response({
@@ -926,7 +929,6 @@ class CompleteAppointmentView(APIView):
             'message': 'Прием завершен',
             'medical_record_id': medical_record.id
         })
-
 # 2. История приемов пациента (медицинская карта)
 class PatientMedicalHistoryView(APIView):
     """

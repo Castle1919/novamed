@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style> body { font-family: sans-serif; } .container { padding: 20px; border: 1px solid #ddd; border-radius: 5px; } </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Здравствуйте, {{ patient_name }}!</h2>
+        <p>Ваш прием у врача {{ doctor_name }} от {{ appointment_date }} завершен.</p>
+        <h3>Диагноз:</h3>
+        <p>{{ diagnosis }}</p>
+        <h3>Рекомендации:</h3>
+        <p>{{ recommendations|default:"Общие рекомендации." }}</p>
+        
+        {% if prescriptions %}
+            <h3>Назначенные препараты:</h3>
+            <ul>
+                {% for p in prescriptions %}
+                    <li>
+                        <strong>{{ p.medicine.name }}</strong><br>
+                        Дозировка: {{ p.dosage }}, Частота: {{ p.frequency }}, Длительность: {{ p.duration }}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <p>С уважением,<br>Команда NovaMed</p>
+    </div>
+</body>
+</html>

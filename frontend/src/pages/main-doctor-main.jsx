@@ -101,10 +101,10 @@ const MainDoctorMainComponent = () => {
         setIsProfileModalOpen(true);
     };
 
-    const handleProfileModalClose = (shouldReload) => {
+    const handleProfileModalClose = (wasSuccessful) => {
         setIsProfileModalOpen(false);
-        if (shouldReload) {
-            window.location.reload();
+        if (wasSuccessful) {
+            window.location.reload(); 
         }
     };
 

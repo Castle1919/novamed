@@ -15,20 +15,22 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class RegisterSerializer(serializers.ModelSerializer):
-    """
-    Сериализатор для регистрации нового пользователя с активацией по email.
-    """
-    password = serializers.CharField(write_only=True, required=True)
-    first_name = serializers.CharField(required=True)
-    last_name = serializers.CharField(required=True)
+    password = serializers.CharField(write_only=True, required=True, min_length=8)
     phone = serializers.CharField(required=True, max_length=20)
-
+    
+    specialty = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    iin = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    is_doctor = serializers.BooleanField(default=False, write_only=True)
+    is_patient = serializers.BooleanField(default=False, write_only=True)
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'phone')
+        fields = ('id', 'username', 'email', 'password', 'first_name', 'last_name', 'phone', 
+                    'is_doctor', 'is_patient', 'specialty', 'iin')
 
     def create(self, validated_data):
+        is_doctor = validated_data.get('is_doctor', False)
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],
@@ -36,8 +38,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
             phone=validated_data.get('phone', ''),
-
-            is_active=False
+            is_active=False,
+            is_doctor=is_doctor,
+            is_patient=not is_doctor,
+            # Сохраняем временные данные
+            temp_iin=validated_data.get('iin', None),
+            temp_specialty=validated_data.get('specialty', None)
         )
         return user
 

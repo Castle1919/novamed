@@ -97,10 +97,11 @@ const MainPatientMainComponent = () => {
         setIsProfileModalOpen(true);
     };
 
-    const handleProfileModalClose = (shouldReload) => {
+    const handleProfileModalClose = (wasSuccessful) => {
         setIsProfileModalOpen(false);
-        if (shouldReload) {
-            window.location.reload();
+        // Перезагружаем страницу ТОЛЬКО если сохранение было успешным
+        if (wasSuccessful) {
+            window.location.reload(); 
         }
     };
 

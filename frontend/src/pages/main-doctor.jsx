@@ -1,4 +1,3 @@
-// ...existing code...
 import '../App.css';
 import React, { useState } from 'react';
 import logo from '../assets/logo.png';
@@ -7,8 +6,8 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { IconButton } from '@mui/material';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
-import RegistrModal from '../components/Registr';
-import LoginModal from '../components/Login';
+import RegistrModal from '../components/Registr'; // Используем универсальную модалку
+import LoginModal from '../components/Login'; // Предполагаем, что есть универсальная
 import ServiceModal from '../components/ModalService';
 import ContactsModal from '../components/ModalContacts';
 import Menu from '@mui/material/Menu';
@@ -17,7 +16,7 @@ import Footer from '../components/Footer';
 import ImgMain from '../assets/doctor-page.png';
 import { NavLink } from "react-router-dom";
 
-function App() {
+function MainDoctor() { // Переименовано для ясности
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [isModalLoginOpen, setIsModalLoginOpen] = useState(false);
 	const [isModalServiceOpen, setIsModalServiceOpen] = useState(false);
@@ -33,42 +32,42 @@ function App() {
 	};
 
 	const handleRegistrClick = () => {
-		setIsModalOpen(true)
+		setIsModalOpen(true);
 	};
 
 	const handleCloseModal = () => {
-		setIsModalOpen(false)
+		setIsModalOpen(false);
 	};
 
 	const handleLoginClick = () => {
-		setIsModalLoginOpen(true)
+		setIsModalLoginOpen(true);
 	};
 
 	const handleCloseModalLogin = () => {
-		setIsModalLoginOpen(false)
+		setIsModalLoginOpen(false);
 	};
 
 	const handleServiceClick = () => {
-		setIsModalServiceOpen(true)
+		setIsModalServiceOpen(true);
 	};
 
 	const handleCloseModalService = () => {
-		setIsModalServiceOpen(false)
+		setIsModalServiceOpen(false);
 	};
 
 	const handleContactsClick = () => {
-		setIsModalContactsOpen(true)
+		setIsModalContactsOpen(true);
 	};
 
 	const handleCloseModalContacts = () => {
-		setIsModalContactsOpen(false)
+		setIsModalContactsOpen(false);
 	};
 
 	return (
 		<>
 			<Toolbar className='header'>
 				<div className='header-left'>
-					<IconButton aria-controls={open ? 'basic-menu' : undefined} aria-haspopup="true" aria-expanded={open ? 'true' : undefined} onClick={handleClick}>
+					<IconButton onClick={handleClick}>
 						<MenuIcon fontSize="large" />
 					</IconButton>
 					<Menu
@@ -76,13 +75,10 @@ function App() {
 						anchorEl={anchorEl}
 						open={open}
 						onClose={handleClose}
-						MenuListProps={{
-							'aria-labelledby': 'basic-button',
-						}}
 					>
 						<NavLink to="/" className='for-navs'><MenuItem onClick={handleClose}>Главная</MenuItem></NavLink>
-						<MenuItem onClick={handleServiceClick}>Сервисы</MenuItem>
-						<MenuItem onClick={handleContactsClick}>Контакты</MenuItem>
+						<MenuItem onClick={() => { handleServiceClick(); handleClose(); }}>Сервисы</MenuItem>
+						<MenuItem onClick={() => { handleContactsClick(); handleClose(); }}>Контакты</MenuItem>
 					</Menu>
 					<NavLink to="/" className='for-navs nav-link-main-main'>
 						<Typography variant="h6">
@@ -106,13 +102,17 @@ function App() {
 				</div>
 			</div>
 			<Footer></Footer>
-			{isModalOpen && <RegistrModal onClose={handleCloseModal} />}
-			{isModalLoginOpen && <LoginModal onClose={handleCloseModalLogin} />}
-			{isModalServiceOpen && <ServiceModal onClose={handleCloseModalService} />}
+			
+            {/* Передаем роль "doctor" в модальное окно регистрации */}
+			{isModalOpen && <RegistrModal onClose={handleCloseModal} role="doctor" />}
+			
+            {/* Предполагаем, что LoginModal тоже может быть универсальным */}
+            {isModalLoginOpen && <LoginModal onClose={handleCloseModalLogin} role="doctor" />}
+			
+            {isModalServiceOpen && <ServiceModal onClose={handleCloseModalService} />}
 			{isModalContactsOpen && <ContactsModal onClose={handleCloseModalContacts} />}
 		</>
 	);
 }
 
-export default App;
-// ...existing code...
+export default MainDoctor;
