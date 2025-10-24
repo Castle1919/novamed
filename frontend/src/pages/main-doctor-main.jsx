@@ -14,6 +14,8 @@ import { getAccessToken, getUserRole, logout } from '../api';
 import ServiceModal from '../components/ModalService';
 import ContactsModal from '../components/ModalContacts';
 import ProfileModal from '../components/ProfileModal';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 const ColorButton = styled(Button)(({ theme }) => ({
     color: theme.palette.getContrastText(blue[500]),
@@ -24,6 +26,7 @@ const ColorButton = styled(Button)(({ theme }) => ({
 }));
 
 const MainDoctorMainComponent = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
@@ -112,7 +115,7 @@ const MainDoctorMainComponent = () => {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Загрузка профиля...</Typography>
+                <Typography sx={{ ml: 2 }}>{t('header.loading')} </Typography>
             </Box>
         );
     }
@@ -120,15 +123,14 @@ const MainDoctorMainComponent = () => {
     return (
         <>
             <Toolbar className='header'>
-                {/* Левая часть хедера */}
                 <div className='header-left'>
                     <IconButton onClick={handleMainMenuOpen}>
                         <MenuIcon fontSize="large" />
                     </IconButton>
                     <Menu anchorEl={mainMenuAnchor} open={Boolean(mainMenuAnchor)} onClose={handleMainMenuClose}>
-                        <MenuItem component={NavLink} to="/doctor/main" onClick={handleMainMenuClose}>Главная</MenuItem>
-                        <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>Сервисы</MenuItem>
-                        <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>Контакты</MenuItem>
+                        <MenuItem component={NavLink} to="/doctor/main" onClick={handleMainMenuClose}>{t('header.main')}</MenuItem>
+                        <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>{t('header.services')}</MenuItem>
+                        <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>{t('header.contacts')}</MenuItem>
                     </Menu>
                     <NavLink to="/doctor/main" className='for-navs nav-link-main-main'>
                         <img src={logo} className='logo' alt="NovaMed Logo" />
@@ -137,6 +139,7 @@ const MainDoctorMainComponent = () => {
                 </div>
 
                 {/* Правая часть хедера (профиль) */}
+                <LanguageSwitcher />
                 <div className='header-right2' onClick={handleProfileMenuOpen} ref={profileMenuButtonRef} tabIndex={-1}>
                     <h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Пользователь'}</h3>
                     <Avatar sx={{ bgcolor: blue[500] }}>
@@ -144,17 +147,17 @@ const MainDoctorMainComponent = () => {
                     </Avatar>
                 </div>
                 <Menu anchorEl={profileMenuButtonRef.current} open={isProfileMenuOpen} onClose={handleProfileMenuClose}>
-                    <MenuItem onClick={handleProfileModalOpen}>Изменить профиль</MenuItem>
-                    <MenuItem onClick={handleLogout}>Выйти</MenuItem>
+                    <MenuItem onClick={handleProfileModalOpen}>{t('header.edit_profile')}</MenuItem>
+                    <MenuItem onClick={handleLogout}>{t('header.logout')}</MenuItem>
                 </Menu>
             </Toolbar>
 
             {/* Основной контент */}
             <div className='wrap-for-patients-view'>
                 <div className='pat-btns'>
-                    <NavLink to="/doctor/main/patients"><ColorButton variant="contained">Прием пациентов</ColorButton></NavLink>
-                    <NavLink to="/doctor/main/history" className='for-navs'><ColorButton variant="contained">Все пациенты (ЭМК)</ColorButton></NavLink>
-                    <NavLink to="/doctor/main/accounting"><ColorButton variant="contained">Склад</ColorButton></NavLink>
+                    <NavLink to="/doctor/main/patients"><ColorButton variant="contained">{t('main-doctor-main.reception_button')}</ColorButton></NavLink>
+                    <NavLink to="/doctor/main/history" className='for-navs'><ColorButton variant="contained">{t('main-doctor-main.history_button')}</ColorButton></NavLink>
+                    <NavLink to="/doctor/main/accounting"><ColorButton variant="contained">{t('main-doctor-main.stock_button')}</ColorButton></NavLink>
                 </div>
                 <div className='cont-for-patients-view'>
                     <Outlet context={{ profile }} />
