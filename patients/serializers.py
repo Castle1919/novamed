@@ -34,24 +34,6 @@ class PatientSerializer(serializers.ModelSerializer):
         # Обновляем остальные данные Patient
         return super().update(instance, validated_data)
 
-class DoctorSerializer(serializers.ModelSerializer):
-    user = UserProfileUpdateSerializer()
-
-    class Meta:
-        model = Doctor
-        fields = (
-            'id', 'user', 'first_name', 'last_name', 'birth_date', 'iin', 
-            'specialty', 'experience_years', 'work_phone', 'license_number', 
-            'department', 'working_hours', 'office_number'
-        )
-
-    def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', None)
-        if user_data:
-            user_serializer = UserProfileUpdateSerializer(instance.user, data=user_data, partial=True)
-            if user_serializer.is_valid(raise_exception=True):
-                user_serializer.save()
-        return super().update(instance, validated_data)
 
 class DoctorSerializer(serializers.ModelSerializer):
     user = UserProfileUpdateSerializer()
@@ -174,6 +156,14 @@ class DoctorSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Некорректная дата рождения')
         
         return value
+    
+    def update(self, instance, validated_data):
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_serializer = UserProfileUpdateSerializer(instance.user, data=user_data, partial=True)
+            user_serializer.is_valid(raise_exception=True)
+            user_serializer.save()
+        return super().update(instance, validated_data)
 
 
 class MedicineSerializer(serializers.ModelSerializer):

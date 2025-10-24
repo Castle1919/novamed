@@ -14,6 +14,8 @@ from patients.models import Patient
 import logging
 import random
 from datetime import date
+from patients.models import Patient, Doctor
+from patients.tasks import cancel_missed_appointments_for_doctor
 
 User = get_user_model()
 
@@ -98,6 +100,18 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         if not self.user.is_active:
             raise serializers.ValidationError("Пожалуйста, активируйте ваш аккаунт, проверив почту.")
+        
+        # --- ЗАПУСК ОЧИСТКИ ПРИ ВХОДЕ ВРАЧА ---
+        if self.user.is_doctor:
+            try:
+                # Убедимся, что профиль доктора существует
+                doctor = self.user.doctor 
+                cancel_missed_appointments_for_doctor(doctor.id)
+            except Doctor.DoesNotExist:
+                print(f"Профиль врача для пользователя {self.user.id} не найден, очистка пропущена.")
+            except Exception as e:
+                print(f"Не удалось запустить очистку для врача {self.user.id}: {e}")
+        # --- КОНЕЦ БЛОКА ---
             
         data['email'] = self.user.email
         data['role'] = 'doctor' if self.user.is_doctor else 'patient'

@@ -14,7 +14,7 @@ from .models import (
     PatientFile,
     DoctorNote,
     DiagnosisTemplate,
-    PatientActiveMedicine
+    PatientActiveMedicine,
     )
 from .serializers import (
     PatientSerializer,
@@ -34,8 +34,9 @@ from .sms_service import send_sms
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework import status
-
+from rest_framework import status, generics, permissions, serializers
+from patients.tasks import cancel_missed_appointments_for_doctor
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 # ===== CUSTOM PERMISSIONS =====
 class IsDoctorUser(permissions.BasePermission):
@@ -277,6 +278,37 @@ class PatientUniqueCheckView(generics.GenericAPIView):
             exists = Patient.objects.filter(phone=phone).exists()
             return Response({'field': 'phone', 'exists': exists})
         return Response({'detail': 'Укажите параметр iin или phone'}, status=400)
+    
+    
+# # --- VIEWS ДЛЯ ВХОДА И ПРОФИЛЯ ---
+# class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
+#     @classmethod
+#     def get_token(cls, user):
+#         token = super().get_token(user)
+#         token['role'] = 'doctor' if user.is_doctor else 'patient'
+#         return token
+
+#     def validate(self, attrs):
+#         data = super().validate(attrs)
+        
+#         if not self.user.is_active:
+#             raise serializers.ValidationError("Пожалуйста, активируйте ваш аккаунт, проверив почту.")
+        
+#         # --- ЗАПУСК ОЧИСТКИ ПРИ ВХОДЕ ВРАЧА ---
+#         if self.user.is_doctor:
+#             try:
+#                 # Убедимся, что профиль доктора существует
+#                 doctor = self.user.doctor 
+#                 cancel_missed_appointments_for_doctor(doctor.id)
+#             except Doctor.DoesNotExist:
+#                 print(f"Профиль врача для пользователя {self.user.id} не найден, очистка пропущена.")
+#             except Exception as e:
+#                 print(f"Не удалось запустить очистку для врача {self.user.id}: {e}")
+#         # --- КОНЕЦ БЛОКА ---
+            
+#         data['email'] = self.user.email
+#         data['role'] = 'doctor' if self.user.is_doctor else 'patient'
+#         return data
 
 
 @api_view(['GET', 'PUT', 'PATCH'])
@@ -399,21 +431,24 @@ class AppointmentCreateView(APIView):
             }
         })
 
+from django.db.models import Case, When, Value, IntegerField, CharField, Q
+from django.utils import timezone
+from .models import Patient, Doctor, Appointment # Убедитесь, что все импортированы
 
 class MyAppointmentsView(APIView):
     """
     Получить записи текущего пользователя (пациента или врача)
+    с правильной сортировкой и "ленивой" отменой для пациента.
     """
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
         date_str = request.query_params.get('date')
         
-        # 1. Проверяем, является ли пользователь ВРАЧОМ
+        # 1. Если зашел ВРАЧ
         try:
             doctor = Doctor.objects.get(user=request.user)
             
-            # Фильтруем по дате, если она есть
             queryset = Appointment.objects.filter(doctor=doctor)
             if date_str:
                 from django.utils.dateparse import parse_date
@@ -421,7 +456,7 @@ class MyAppointmentsView(APIView):
                 if target_date:
                     queryset = queryset.filter(date_time__date=target_date)
 
-            # СОРТИРОВКА ДЛЯ ВРАЧА: сначала 'scheduled', потом остальные, и по времени
+            # Сортировка для врача: сначала 'scheduled', потом остальные, и по времени
             appointments = queryset.select_related('patient', 'patient__user').annotate(
                 status_order=Case(
                     When(status='scheduled', then=Value(1)),
@@ -430,24 +465,19 @@ class MyAppointmentsView(APIView):
                 )
             ).order_by('status_order', 'date_time')
             
-            # Сериализуем данные для врача
             data = []
             for apt in appointments:
+                # ... (ваш код сериализации для врача без изменений) ...
+                # ... (я скопирую его из вашего предыдущего ответа) ...
                 age = None
                 if apt.patient.birth_date:
                     today = date.today()
                     born = apt.patient.birth_date
                     age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
-                
                 patient_data = {
-                    'id': apt.patient.id, 'first_name': apt.patient.first_name,
-                    'last_name': apt.patient.last_name, 'phone': apt.patient.user.phone or '',
-                    'age': age, 'gender': apt.patient.get_gender_display(), 'iin': apt.patient.iin,
+                    'id': apt.patient.id, 'first_name': apt.patient.first_name, 'last_name': apt.patient.last_name,
+                    'phone': apt.patient.user.phone or '', 'age': age, 'gender': apt.patient.get_gender_display(), 'iin': apt.patient.iin,
                 }
-                
-                if hasattr(apt.patient.user, 'avatar') and apt.patient.user.avatar:
-                    patient_data['avatar'] = request.build_absolute_uri(apt.patient.user.avatar.url)
-                    
                 data.append({
                     'id': apt.id, 'date_time': apt.date_time.isoformat(), 'status': apt.status,
                     'notes': apt.notes or '', 'diagnosis': apt.diagnosis or '',
@@ -457,30 +487,40 @@ class MyAppointmentsView(APIView):
             return Response(data)
             
         except Doctor.DoesNotExist:
-            pass # Если не врач, продолжаем проверку на пациента
+            pass # Если не врач, идем дальше
         
-        # 2. Если не врач, проверяем, является ли пользователь ПАЦИЕНТОМ
+        # 2. Если зашел ПАЦИЕНТ
         try:
             patient = Patient.objects.get(user=request.user)
             
-            # СОРТИРОВКА ДЛЯ ПАЦИЕНТА: 'scheduled' -> 'completed' -> 'cancelled'
+            today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            
             appointments = Appointment.objects.filter(patient=patient).select_related('doctor').annotate(
+                # Вычисляем статус "на лету"
+                effective_status=Case(
+                    When(Q(status='scheduled') & Q(date_time__lt=today_start), then=Value('cancelled')),
+                    default='status',
+                    output_field=CharField()
+                ),
+                # Сортируем по вычисленному статусу
                 status_order=Case(
-                    When(status='scheduled', then=Value(1)),
-                    When(status='completed', then=Value(2)),
-                    When(status='cancelled', then=Value(3)),
-                    default=Value(4),
+                    When(effective_status='scheduled', then=Value(1)),
+                    When(effective_status='completed', then=Value(2)),
+                    default=Value(3),
                     output_field=IntegerField()
                 )
             ).order_by('status_order', '-date_time')
             
-            # Сериализуем данные для пациента
             data = []
             for apt in appointments:
                 data.append({
-                    'id': apt.id, 'date_time': apt.date_time.isoformat(), 'status': apt.status,
-                    'notes': apt.notes or '', 'diagnosis': apt.diagnosis or '',
-                    'room_number': apt.room_number or '', 'doctor': apt.doctor.id,
+                    'id': apt.id,
+                    'date_time': apt.date_time.isoformat(),
+                    'status': apt.effective_status, # <-- Используем вычисленный статус
+                    'notes': apt.notes or '',
+                    'diagnosis': apt.diagnosis or '',
+                    'room_number': apt.room_number or '',
+                    'doctor': apt.doctor.id,
                     'doctor_details': {
                         'id': apt.doctor.id,
                         'name': f"{apt.doctor.last_name} {apt.doctor.first_name}",
@@ -493,7 +533,7 @@ class MyAppointmentsView(APIView):
             return Response(data)
             
         except Patient.DoesNotExist:
-            return Response({"error": "Пользователь не является ни врачом, ни пациентом"}, status=403)
+            return Response({"error": "Профиль не найден"}, status=403)
 
 class AppointmentDetailViewSet(generics.RetrieveUpdateDestroyAPIView):
     """Просмотр, обновление и удаление записи"""
