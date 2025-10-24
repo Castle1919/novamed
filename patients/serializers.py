@@ -9,14 +9,14 @@ from accounts.models import User
 class UserProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('email', 'phone')
+        fields = ('email', 'phone', 'phone_verified')
+        read_only_fields = ('phone_verified',)
 
 class PatientSerializer(serializers.ModelSerializer):
-    user = UserProfileUpdateSerializer()
+    user = UserProfileUpdateSerializer(read_only=True) 
 
     class Meta:
         model = Patient
-        # Укажите все поля, которые вы хотите видеть и редактировать
         fields = (
             'id', 'user', 'first_name', 'last_name', 'birth_date', 'gender', 
             'height', 'weight', 'iin', 'chronic_diseases', 'allergies', 
@@ -24,30 +24,32 @@ class PatientSerializer(serializers.ModelSerializer):
         )
 
     def update(self, instance, validated_data):
-        # Обновляем данные User, если они пришли
         user_data = validated_data.pop('user', None)
         if user_data:
             user_serializer = UserProfileUpdateSerializer(instance.user, data=user_data, partial=True)
             if user_serializer.is_valid(raise_exception=True):
                 user_serializer.save()
 
-        # Обновляем остальные данные Patient
         return super().update(instance, validated_data)
 
 
 class DoctorSerializer(serializers.ModelSerializer):
-    user = UserProfileUpdateSerializer()
+    user = UserProfileUpdateSerializer(read_only=True)
 
     class Meta:
         model = Doctor
-        fields = '__all__'
+        fields = (
+            'id', 'user', 'first_name', 'last_name', 'birth_date', 'iin', 
+            'specialty', 'experience_years', 'work_phone', 'license_number', 
+            'department', 'working_hours', 'office_number'
+        )
 
     def update(self, instance, validated_data):
-        user_data = validated_data.pop('user', {})
-        user = instance.user
-        user.email = user_data.get('email', user.email)
-        user.phone = user_data.get('phone', user.phone)
-        user.save()
+        user_data = validated_data.pop('user', None)
+        if user_data:
+            user_serializer = UserProfileUpdateSerializer(instance.user, data=user_data, partial=True)
+            user_serializer.is_valid(raise_exception=True)
+            user_serializer.save()
         return super().update(instance, validated_data)
 
     def validate_iin(self, value):

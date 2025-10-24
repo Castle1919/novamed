@@ -10,12 +10,15 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .serializers import RegisterSerializer, UserSerializer
-from patients.models import Patient
 import logging
 import random
 from datetime import date
 from patients.models import Patient, Doctor
 from patients.tasks import cancel_missed_appointments_for_doctor
+from patients.sms_service import send_sms
+from rest_framework.permissions import IsAuthenticated
+from django.utils import timezone
+from datetime import timedelta
 
 User = get_user_model()
 
@@ -47,6 +50,56 @@ def send_activation_email(user, request):
     except Exception as e:
         print(f"ОШИБКА при отправке письма для активации: {e}")
 
+class SendPhoneVerificationCodeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        if not user.phone:
+            return Response({'error': 'Сначала укажите и сохраните номер телефона в профиле.'}, status=400)
+
+        # Генерируем простой 6-значный код
+        code = str(random.randint(100000, 999999))
+        
+        # Сохраняем код и время в профиле пользователя
+        user.phone_verification_code = code
+        user.code_generation_time = timezone.now()
+        user.save()
+        
+        message = f"Ваш код подтверждения для NovaMed: {code}"
+        
+        if send_sms(user.phone, message):
+            return Response({'success': True, 'message': 'Код подтверждения отправлен на ваш номер.'})
+        else:
+            return Response({'error': 'Не удалось отправить SMS.'}, status=500)
+
+class VerifyPhoneView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        code = request.data.get('code')
+
+        if not code:
+            return Response({'error': 'Код не предоставлен.'}, status=400)
+
+        # Проверяем, что код еще не "протух" (живет 5 минут)
+        if user.code_generation_time is None or (timezone.now() > user.code_generation_time + timedelta(minutes=5)):
+            return Response({'error': 'Код устарел. Запросите новый.'}, status=400)
+
+        if user.phone_verification_code == code:
+            user.phone_verified = True
+            user.phone_verification_code = None # Очищаем код после использования
+            user.code_generation_time = None
+            user.save()
+            
+            return Response({
+                'success': True,
+                'message': 'Номер телефона успешно подтвержден!',
+            })
+        else:
+            return Response({'error': 'Неверный код подтверждения.'}, status=400)
+
 
 # --- VIEWS ДЛЯ РЕГИСТРАЦИИ И АКТИВАЦИИ ---
 class RegisterView(generics.CreateAPIView):
@@ -74,12 +127,27 @@ class ActivateUserView(APIView):
                 user.email_verified = True
                 user.save()
                 
-                if not Patient.objects.filter(user=user).exists():
+                # Создаем профиль в зависимости от роли, используя временные данные
+                if user.is_patient and not hasattr(user, 'patient'):
                     Patient.objects.create(
-                        user=user, first_name=user.first_name, last_name=user.last_name,
-                        birth_date=date(2000, 1, 1), gender='M',
-                        iin=''.join([str(random.randint(0, 9)) for _ in range(12)])
+                        user=user, 
+                        first_name=user.first_name, 
+                        last_name=user.last_name,
+                        birth_date=date(2000, 1, 1), # Заглушка
+                        gender='M',
+                        iin=user.temp_iin or ''.join([str(random.randint(0, 9)) for _ in range(12)])
                     )
+                elif user.is_doctor and not hasattr(user, 'doctor'):
+                    Doctor.objects.create(
+                        user=user, 
+                        first_name=user.first_name, 
+                        last_name=user.last_name,
+                        birth_date=date(1990, 1, 1), # Заглушка
+                        iin=''.join([str(random.randint(0, 9)) for _ in range(12)]),
+                        specialty=user.temp_specialty or 'Терапевт',
+                        experience_years=1
+                    )
+                
                 return Response({'success': True, 'message': 'Аккаунт успешно активирован!'})
             else:
                 return Response({'success': True, 'message': 'Аккаунт уже был активирован.'})
@@ -133,3 +201,41 @@ class UserDetailView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+    
+# Простой сериализатор только для телефона
+class PhoneUpdateSerializer(serializers.Serializer):
+    phone = serializers.CharField(max_length=20)
+
+    def validate_phone(self, value):
+        # Проверяем уникальность, исключая текущего пользователя
+        user = self.context['request'].user
+        if User.objects.exclude(pk=user.pk).filter(phone=value).exists():
+            raise serializers.ValidationError("Этот номер телефона уже используется.")
+        return value
+
+class UpdatePhoneView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        
+        print("\n--- UPDATE PHONE DEBUG ---")
+        print("Request data:", request.data)
+        
+        serializer = PhoneUpdateSerializer(data=request.data, context={'request': request})
+        
+        is_valid = serializer.is_valid()
+        print("Is valid:", is_valid)
+        
+        if not is_valid:
+            print("Validation Errors:", serializer.errors)
+        
+        print("--------------------------\n")
+        
+        if is_valid:
+            user.phone = serializer.validated_data['phone']
+            user.phone_verified = False
+            user.save()
+            return Response({'success': True, 'phone': user.phone})
+        
+        return Response(serializer.errors, status=400)
