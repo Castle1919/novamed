@@ -311,20 +311,31 @@ export default function MainDoctorMainPatients() {
             </div>
 
             <Chip 
-                label={appointment.status === 'scheduled' ? 'Ожидает' : 'Завершён'}
-                color={appointment.status === 'scheduled' ? 'primary' : 'success'}
-                size="small"
-                sx={{ mx: 2 }}
-            />
+				label={
+					appointment.status === 'scheduled' ? 'Ожидает' :
+					appointment.status === 'completed' ? 'Завершён' :
+					appointment.status === 'cancelled' ? 'Отменено' :
+					'Неизвестно'
+				}
+				color={
+					appointment.status === 'scheduled' ? 'primary' :
+					appointment.status === 'completed' ? 'success' :
+					appointment.status === 'cancelled' ? 'error' :
+					'default'
+				}
+				size="small"
+				sx={{ mx: 2 }}
+			/>
 
             <ColorButton 
-                variant="contained" 
-                size="small"
-                disabled={appointment.status !== 'scheduled'}
-                onClick={() => handleStartReception(appointment)}
-            >
-                {appointment.status === 'scheduled' ? 'Принять' : 'Завершён'}
-            </ColorButton>
+				variant="contained" 
+				size="small"
+				// Кнопка активна, только если статус 'scheduled'
+				disabled={appointment.status !== 'scheduled'}
+				onClick={() => handleStartReception(appointment)}
+			>
+				{appointment.status === 'scheduled' ? 'Принять' : 'Завершён'}
+			</ColorButton>
         </div>
     ))}
 </div>
