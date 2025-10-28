@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 import environ
 from datetime import timedelta
+import dj_database_url
 
 USE_TZ = True  
 TIME_ZONE = 'Etc/GMT-5'
@@ -12,9 +13,16 @@ FRONTEND_BUILD_DIR = BASE_DIR / 'frontend' / 'build'
 env = environ.Env(DEBUG=(bool, False))
 
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-SECRET_KEY='django-insecure-f2l9&iw7ezn*m_x$^tmcd$-(idnrpzdi=a%-0jvd*c#5_9$-ua'
-DEBUG=True
-ALLOWED_HOSTS= 'localhost', '127.0.0.1'
+
+SECRET_KEY = os.environ.get('SECRET_KEY', 'ваша_секретная_строка_для_локальной_разработки')
+
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+HEROKU_APP_NAME = os.environ.get('HEROKU_APP_NAME')
+if HEROKU_APP_NAME:
+    ALLOWED_HOSTS.append(f"{HEROKU_APP_NAME}.herokuapp.com")
+
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -35,6 +43,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -74,6 +83,10 @@ DATABASES = {
     }
 }
 
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
@@ -87,11 +100,10 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
+
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    FRONTEND_BUILD_DIR / 'static',
-]
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -118,26 +130,20 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
-CORS_ALLOW_ALL_ORIGINS = True
+
+VERCEL_URL = os.environ.get('VERCEL_URL')
+if VERCEL_URL:
+    CORS_ALLOWED_ORIGINS.append(VERCEL_URL)
+
+CORS_ALLOW_ALL_ORIGINS = False 
 
 # --- НАСТРОЙКИ ДЛЯ ОТПРАВКИ EMAIL ЧЕРЕЗ GMAIL ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nursultan12369@gmail.com'
-EMAIL_HOST_PASSWORD = 'mlue ubac ilcn xdht'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'your_local_email@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'your_local_app_password')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 
-# SendGrid settings (email sending)
-# EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
-# SENDGRID_API_KEY = os.environ.get('SENDGRID_API_KEY')# API-КЛЮЧ SENDGRID
-# SENDGRID_SANDBOX_MODE_IN_DEBUG = False # True, если тестировать без реальной отправки
-# DEFAULT_FROM_EMAIL = 'nursultan12369@gmail.com' 
-# =================================================================
-
-# Twilio settings (SMS sending)
-# TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
-# TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_ACCOUNT_TOKEN')
-# TWILIO_PHONE_NUMBER = '+17759935648'
