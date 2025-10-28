@@ -3,9 +3,6 @@ from pathlib import Path
 import environ
 from datetime import timedelta
 
-# BASE_DIR = Path(__file__).resolve().parent.parent
-# BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 USE_TZ = True  
 TIME_ZONE = 'Etc/GMT-5'
 
@@ -123,13 +120,15 @@ CORS_ALLOWED_ORIGINS = [
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 
+# --- НАСТРОЙКИ ДЛЯ ОТПРАВКИ EMAIL ЧЕРЕЗ GMAIL ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'nursultan12369@gmail.com'
+EMAIL_HOST_PASSWORD = 'mlue ubac ilcn xdht'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# =================================================================
-# SendGrid
-# =================================================================
-
-
-# 
 
 # SendGrid settings (email sending)
 # EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
@@ -142,12 +141,3 @@ CORS_ALLOW_ALL_ORIGINS = True
 # TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID')
 # TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_ACCOUNT_TOKEN')
 # TWILIO_PHONE_NUMBER = '+17759935648'
-
-# --- НАСТРОЙКИ ДЛЯ ОТПРАВКИ EMAIL ЧЕРЕЗ GMAIL ---
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'nursultan12369@gmail.com'
-EMAIL_HOST_PASSWORD = 'mlue ubac ilcn xdht'
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
