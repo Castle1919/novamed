@@ -1,0 +1,8 @@
+{
+    "name": "NovaMed Backend",
+    "buildpacks": [
+        {
+            "url": "heroku/python"
+        }
+    ]
+}
