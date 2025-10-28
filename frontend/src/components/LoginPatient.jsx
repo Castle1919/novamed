@@ -13,6 +13,7 @@ import { Formik, Field, Form } from 'formik';
 import * as yup from 'yup';
 import axios from '../api/axios';
 import { setTokens } from '../api';
+import { useTranslation } from 'react-i18next';
 
 const style = {
 	position: 'absolute',
@@ -33,6 +34,7 @@ function Login({ onClose }) {
 	const navigate = useNavigate();
 	const [showPassword, setShowPassword] = useState(false);
 	const [error, setError] = useState('');
+	const { t } = useTranslation();
 
 	const validationSchema = yup.object().shape({
 		email: yup.string().email('Неверный формат email').required('Обязательное поле'),
@@ -102,7 +104,7 @@ function Login({ onClose }) {
 	return (
 		<Modal open={true} onClose={onClose} aria-labelledby="patient-login-modal-title">
 			<Box sx={{ ...style, width: 400 }}>
-				<h2 id="patient-login-modal-title">Вход</h2>
+				<h2 id="patient-login-modal-title">{t('login.title')}</h2>
 
 				{error && (
 					<div style={{ 
@@ -124,7 +126,7 @@ function Login({ onClose }) {
 									{({ field, meta }) => (
 										<TextField
 											{...field}
-											label="Почта"
+											label={t('login.email')}
 											variant="outlined"
 											className="reg-form-inp"
 											error={meta.touched && Boolean(meta.error)}
@@ -140,7 +142,7 @@ function Login({ onClose }) {
 									{({ field, meta }) => (
 										<TextField
 											{...field}
-											label="Пароль"
+											label={t('login.password')}
 											variant="outlined"
 											type={showPassword ? 'text' : 'password'}
 											className="reg-form-inp"
@@ -172,7 +174,7 @@ function Login({ onClose }) {
 								id="extForRegistr"
 								disabled={isSubmitting}
 							>
-								{isSubmitting ? 'Вход...' : 'Войти'}
+								{isSubmitting ? t('login.submiting') : t('login.submit')}
 							</Button>
 						</Form>
 					)}

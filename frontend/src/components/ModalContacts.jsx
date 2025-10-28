@@ -5,6 +5,7 @@ import Button from '@mui/material/Button';
 import ContPng1 from '../assets/contacts1.png';
 import ContPng2 from '../assets/contacts2.png';
 import ContPng3 from '../assets/contacts3.png';
+import { useTranslation } from 'react-i18next';
 
 const style = {
 	position: 'absolute',
@@ -25,6 +26,7 @@ export default function ModalContacts({ onClose }) {
 	const handleClose = () => {
 		onClose();
 	};
+	const { t } = useTranslation('services');
 
 	return (
 		<Modal
@@ -34,33 +36,33 @@ export default function ModalContacts({ onClose }) {
 			aria-describedby="child-modal-description"
 		>
 			<Box sx={{ ...style, width: 900 }}>
-				<h2 id="parent-modal-title">Контакты</h2>
+				<h2 id="parent-modal-title">{t('contacts.title')}</h2>
 
 				<div className="services-divs">
 					<div className="services-div2">
 						<img src={ContPng1} alt="" />
-						<h2>Ресепшен</h2>
+						<h2>{t('contacts.reception')}</h2>
 						<p>Телефон: +7 (777) 777-7777</p>
 						<p>Email: reception@gmail.com</p>
 					</div>
 
 					<div className="services-div2">
 						<img src={ContPng3} alt="" />
-						<h2>Больница</h2>
-						<p>Адрес: Казахстан, Караганда</p>
+						<h2>{t('contacts.hospital')}</h2>
+						<p>{t('contacts.address')}</p>
 						<p>Телефон: +7 (777) 777-7777</p>
 						<p>Email: info@gmail.com</p>
 					</div>
 
 					<div className="services-div2">
 						<img src={ContPng2} alt="" />
-						<h2>Директор</h2>
+						<h2>{t('contacts.ceo')}</h2>
 						<p>Телефон: +7 (777) 777-7777</p>
 						<p>Email: director@gmail.com</p>
 					</div>
 				</div>
 
-				<Button onClick={handleClose}>Закрыть</Button>
+				<Button onClick={handleClose}>{t('contacts.close')}</Button>
 			</Box>
 		</Modal>
 	);

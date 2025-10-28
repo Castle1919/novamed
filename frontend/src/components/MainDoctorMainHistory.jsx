@@ -7,10 +7,9 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import PersonIcon from '@mui/icons-material/Person';
-import { Link } from 'react-router-dom';
 import axios from '../api/axios';
-import dayjs from 'dayjs';
 import PatientMedicalCardModal from './PatientMedicalCardModal';
+import {useTranslation} from "react-i18next";
 
 
 const ColorButton = styled(Button)(({ theme }) => ({
@@ -28,6 +27,7 @@ export default function MainDoctorMainHistory() {
 	const [query, setQuery] = useState('');
 	const [modalOpen, setModalOpen] = useState(false);
 	const [selectedPatientId, setSelectedPatientId] = useState(null);
+	const { t } = useTranslation();
 
 	useEffect(() => {
 		const fetchPatients = async () => {
@@ -78,14 +78,14 @@ export default function MainDoctorMainHistory() {
 	return (
 		<div className="patient-history-main">
 			<div className="patient-history-input">
-				<h2>Наши пациенты</h2>
+				<h2>{t('main-doctor-history.title')}</h2>
 				<Paper
 					component="form"
-					sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: 250 }}
+					sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: 300 }}
 				>
 					<InputBase
 						sx={{ ml: 1, flex: 1 }}
-						placeholder="Поиск по имени или ИИН"
+						placeholder={t('main-doctor-history.search')}
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 					/>
@@ -98,7 +98,7 @@ export default function MainDoctorMainHistory() {
 			{filteredPatients.length === 0 ? (
 				<Box sx={{ textAlign: 'center', py: 8, width: '100%' }}>
 					<Typography variant="h6" color="text.secondary">
-						{query ? 'Пациенты не найдены' : 'Список пациентов пуст'}
+						{query ? t('main-doctor-history.patients_not_found') : t('main-doctor-history.patients_list_empty')}
 					</Typography>
 				</Box>
 			) : (
@@ -110,14 +110,14 @@ export default function MainDoctorMainHistory() {
 							</Avatar>
 							<h3>{patient.first_name} {patient.last_name}</h3>
 							<p style={{ fontSize: '0.8rem', color: '#666', margin: '0 0 10px 0' }}>
-								ИИН: {patient.iin || 'не указан'}
+								{t('main-doctor-history.iin')} {patient.iin || t('main-doctor-history.ne_ukaz')}
 							</p>
 							<ColorButton
 								variant="contained"
 								fullWidth
 								onClick={() => handleOpenCard(patient.id)}
 							>
-								Открыть ЭМК
+								{t('main-doctor-history.open_emc')}
 							</ColorButton>
 						</div>
 					))}

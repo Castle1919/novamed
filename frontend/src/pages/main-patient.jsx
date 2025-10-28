@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import logo from '../assets/logo.png';
 import Button from '@mui/material/Button';
 import MenuIcon from '@mui/icons-material/Menu';
-import { IconButton } from '@mui/material';
+import { IconButton, Box } from '@mui/material';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import RegistrModal from '../components/Registr';
@@ -15,6 +15,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Footer from '../components/Footer';
 import ImgMain from '../assets/patient-page.png';
 import { NavLink, Outlet } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 
 
 function MainPatient() {
@@ -22,7 +24,7 @@ function MainPatient() {
 	const [isModalLoginOpen, setIsModalLoginOpen] = useState(false);
 	const [isModalServiceOpen, setIsModalServiceOpen] = useState(false);
 	const [isModalContactsOpen, setIsModalContactsOpen] = useState(false);
-
+	const { t } = useTranslation();
 	const [anchorEl, setAnchorEl] = useState(null);
 	const open = Boolean(anchorEl);
 	const handleClick = (e) => {
@@ -67,9 +69,9 @@ function MainPatient() {
 	return (
 		<>
 
-			<Toolbar className='header'>
-				<div className='header-left'>
-					<IconButton aria-controls={open ? 'basic-menu' : undefined} aria-haspopup="true" aria-expanded={open ? 'true' : undefined} onClick={handleClick}>
+			<Toolbar>
+				<Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+					<IconButton onClick={handleClick}>
 						<MenuIcon fontSize="large" />
 					</IconButton>
 					<Menu
@@ -77,13 +79,10 @@ function MainPatient() {
 						anchorEl={anchorEl}
 						open={open}
 						onClose={handleClose}
-						MenuListProps={{
-							'aria-labelledby': 'basic-button',
-						}}
 					>
-						<NavLink to="/" className='for-navs'><MenuItem onClick={handleClose}>Главная</MenuItem></NavLink>
-						<MenuItem onClick={handleServiceClick}>Сервисы</MenuItem>
-						<MenuItem onClick={handleContactsClick}>Контакты</MenuItem>
+						<NavLink to="/" className='for-navs'><MenuItem onClick={handleClose}>{t('header.main')}</MenuItem></NavLink>
+						<MenuItem onClick={() => { handleServiceClick(); handleClose(); }}>{t('header.services')}</MenuItem>
+						<MenuItem onClick={() => { handleContactsClick(); handleClose(); }}>{t('header.contacts')}</MenuItem>
 					</Menu>
 					<NavLink to="/" className='for-navs nav-link-main-main'>
 						<Typography variant="h6">
@@ -91,16 +90,22 @@ function MainPatient() {
 						</Typography>
 						<h2 className='logoName'>NovaMed</h2>
 					</NavLink>
-				</div>
-				<div className='header-right'>
-					<Button variant="contained" onClick={handleRegistrClick}>Регистрация</Button>
-					<Button variant="outlined" onClick={handleLoginClick}>Вход</Button>
-				</div>
+				</Box>
+
+				<Box sx={{ flexGrow: 3 }} />
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+					<LanguageSwitcher />
+				</Box>
+
+				<Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+					<Button variant="contained" onClick={handleRegistrClick} sx={{ minWidth: '150px' }}>{t('header.register')}</Button>
+					<Button variant="outlined" onClick={handleLoginClick} sx={{ minWidth: '80px' }}>{t('header.login')}</Button>
+				</Box>
 			</Toolbar>
 			<div className='mainbox'>
 				<div className='mainbox-left'>
-					<h2>Пациенты — Храбрецы Заботы о Себе</h2>
-					<p>Пациенты — это не просто те, кто нуждается в лечении, но настоящие храбрецы, стоящие на фронте своего здоровья. В каждом пациенте пребывает сила и решимость, необходимые для преодоления трудностей и возвращения к полноценной жизни.</p>
+					<h2>{t('patient-main.title')}</h2>
+					<p>{t('patient-main.text')}</p>
 				</div>
 				<div className='mainbox-right'>
 					<img src={ImgMain} alt="No img" />

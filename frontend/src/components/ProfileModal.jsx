@@ -4,6 +4,7 @@ import {
     InputAdornment, Chip, Grid, IconButton, MenuItem, Snackbar, Divider
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
+import { useTranslation } from 'react-i18next';
 import axios from '../api/axios';
 
 const style = {
@@ -16,14 +17,16 @@ const style = {
     display: 'flex', flexDirection: 'column',
 };
 
-const genderOptions = [
-    { value: 'M', label: 'Мужской' },
-    { value: 'F', label: 'Женский' },
-];
-
 const bloodTypeOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export default function ProfileModal({ open, onClose, role }) {
+    const { t } = useTranslation();
+
+    const genderOptions = [
+        { value: 'M', labelKey: 'profileModal.gender.male' },
+        { value: 'F', labelKey: 'profileModal.gender.female' },
+    ];
+
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState({});
@@ -36,20 +39,20 @@ export default function ProfileModal({ open, onClose, role }) {
         if (open) {
             const fetchProfile = async () => {
                 setLoading(true);
-                setCodeSent(false); // Сбрасываем состояние при открытии
+                setCodeSent(false);
                 try {
                     const endpoint = role === 'doctor' ? '/doctors/me/' : '/patients/me/';
                     const response = await axios.get(endpoint);
                     setProfile(response.data);
                 } catch (err) {
-                    setSnack({ open: true, message: 'Не удалось загрузить профиль', severity: 'error' });
+                    setSnack({ open: true, message: t('profileModal.messages.loadError'), severity: 'error' });
                 } finally {
                     setLoading(false);
                 }
             };
             fetchProfile();
         }
-    }, [open, role]);
+    }, [open, role, t]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -88,12 +91,12 @@ export default function ProfileModal({ open, onClose, role }) {
             const updateEndpoint = role === 'doctor' ? `/doctors/${profile.id}/` : `/patients/${profile.id}/`;
             await axios.patch(updateEndpoint, payload);
 
-            setSnack({ open: true, message: 'Профиль успешно обновлен!', severity: 'success' });
+            setSnack({ open: true, message: t('profileModal.messages.saveSuccess'), severity: 'success' });
             setTimeout(() => onClose(true), 1500);
 
         } catch (err) {
             const errorData = err.response?.data;
-            const errorMessage = errorData ? Object.entries(errorData).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : value}`).join('; ') : 'Ошибка при сохранении.';
+            const errorMessage = errorData ? Object.entries(errorData).map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(' ') : value}`).join('; ') : t('profileModal.messages.saveErrorGeneric');
             setSnack({ open: true, message: errorMessage, severity: 'error' });
             setSaving(false);
         }
@@ -103,9 +106,9 @@ export default function ProfileModal({ open, onClose, role }) {
         try {
             await axios.post('/accounts/phone/send-verification/');
             setCodeSent(true);
-            setSnack({ open: true, message: 'Код отправлен на ваш номер', severity: 'info' });
+            setSnack({ open: true, message: t('profileModal.messages.codeSent'), severity: 'info' });
         } catch (err) {
-            setSnack({ open: true, message: 'Не удалось отправить код', severity: 'error' });
+            setSnack({ open: true, message: t('profileModal.messages.codeSendError'), severity: 'error' });
         }
     };
 
@@ -114,9 +117,9 @@ export default function ProfileModal({ open, onClose, role }) {
             await axios.post('/accounts/phone/verify/', { code: verificationCode });
             setProfile(p => ({ ...p, user: { ...p.user, phone_verified: true } }));
             setCodeSent(false);
-            setSnack({ open: true, message: 'Номер успешно подтвержден!', severity: 'success' });
+            setSnack({ open: true, message: t('profileModal.messages.verifySuccess'), severity: 'success' });
         } catch (err) {
-            setSnack({ open: true, message: 'Неверный код', severity: 'error' });
+            setSnack({ open: true, message: t('profileModal.messages.verifyError'), severity: 'error' });
         }
     };
 
@@ -131,7 +134,7 @@ export default function ProfileModal({ open, onClose, role }) {
         <Modal open={open} onClose={() => onClose(false)}>
             <Box sx={style}>
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e0e0e0', flexShrink: 0 }}>
-                    <Typography variant="h6">Изменить профиль</Typography>
+                    <Typography variant="h6">{t('profileModal.title')}</Typography>
                     <IconButton onClick={() => onClose(false)}><CloseIcon /></IconButton>
                 </Box>
 
@@ -143,18 +146,18 @@ export default function ProfileModal({ open, onClose, role }) {
                     ) : (
                         <>
                             <Grid container spacing={2}>
-                                <Grid item xs={12}><Divider><Chip label="Основная информация" size="small" /></Divider></Grid>
-                                <Grid item xs={12} sm={6}><TextField name="first_name" label="Имя" value={profile.first_name || ''} onChange={handleChange} fullWidth /></Grid>
-                                <Grid item xs={12} sm={6}><TextField name="last_name" label="Фамилия" value={profile.last_name || ''} onChange={handleChange} fullWidth /></Grid>
-                                <Grid item xs={12} sm={6}><TextField name="birth_date" label="Дата рождения" type="date" value={profile.birth_date || ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} /></Grid>
-                                <Grid item xs={12} sm={6}><TextField name="iin" label="ИИН" value={profile.iin || ''} onChange={handleChange} fullWidth /></Grid>
+                                <Grid item xs={12}><Divider><Chip label={t('profileModal.dividers.mainInfo')} size="small" /></Divider></Grid>
+                                <Grid item xs={12} sm={6}><TextField name="first_name" label={t('profileModal.labels.firstName')} value={profile.first_name || ''} onChange={handleChange} fullWidth /></Grid>
+                                <Grid item xs={12} sm={6}><TextField name="last_name" label={t('profileModal.labels.lastName')} value={profile.last_name || ''} onChange={handleChange} fullWidth /></Grid>
+                                <Grid item xs={12} sm={6}><TextField name="birth_date" label={t('profileModal.labels.birthDate')} type="date" value={profile.birth_date || ''} onChange={handleChange} fullWidth InputLabelProps={{ shrink: true }} /></Grid>
+                                <Grid item xs={12} sm={6}><TextField name="iin" label={t('profileModal.labels.iin')} value={profile.iin || ''} onChange={handleChange} fullWidth /></Grid>
 
-                                <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Контактные данные" size="small" /></Divider></Grid>
-                                <Grid item xs={12} sm={6}><TextField name="email" label="Email" value={profile.user?.email || ''} onChange={handleChange} fullWidth /></Grid>
+                                <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label={t('profileModal.dividers.contactInfo')} size="small" /></Divider></Grid>
+                                <Grid item xs={12} sm={6}><TextField name="email" label={t('profileModal.labels.email')} value={profile.user?.email || ''} onChange={handleChange} fullWidth /></Grid>
                                 <Grid item xs={12} sm={6}>
                                     <TextField
                                         name="phone"
-                                        label="Телефон"
+                                        label={t('profileModal.labels.phone')}
                                         value={profile.user?.phone || ''}
                                         onChange={handleChange}
                                         fullWidth
@@ -162,9 +165,9 @@ export default function ProfileModal({ open, onClose, role }) {
                                             endAdornment: (
                                                 <InputAdornment position="end">
                                                     {profile.user?.phone_verified ? (
-                                                        <Chip label="Подтвержден" color="success" size="small" />
+                                                        <Chip label={t('profileModal.labels.verified')} color="success" size="small" />
                                                     ) : (
-                                                        <Button onClick={handleSendCode} size="small" disabled={codeSent}>Код</Button>
+                                                        <Button onClick={handleSendCode} size="small" disabled={codeSent}>{t('profileModal.buttons.sendCode')}</Button>
                                                     )}
                                                 </InputAdornment>
                                             )
@@ -174,44 +177,44 @@ export default function ProfileModal({ open, onClose, role }) {
                                 {codeSent && !profile.user?.phone_verified && (
                                     <Grid item xs={12}>
                                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1 }}>
-                                            <TextField label="Код из SMS" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} size="small" />
-                                            <Button onClick={handleVerifyCode} variant="contained" size="small">Подтвердить</Button>
+                                            <TextField label={t('profileModal.labels.smsCode')} value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} size="small" />
+                                            <Button onClick={handleVerifyCode} variant="contained" size="small">{t('profileModal.buttons.verify')}</Button>
                                         </Box>
                                     </Grid>
                                 )}
 
                                 {role === 'patient' && (
                                     <>
-                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Медицинские данные" size="small" /></Divider></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="height" label="Рост (см)" type="number" value={profile.height || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="weight" label="Вес (кг)" type="number" value={profile.weight || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label={t('profileModal.dividers.medicalInfo')} size="small" /></Divider></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="height" label={t('profileModal.labels.height')} type="number" value={profile.height || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="weight" label={t('profileModal.labels.weight')} type="number" value={profile.weight || ''} onChange={handleChange} fullWidth /></Grid>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField name="blood_type" label="Группа крови" value={profile.blood_type || ''} onChange={handleChange} fullWidth select>
+                                            <TextField name="blood_type" label={t('profileModal.labels.bloodType')} value={profile.blood_type || ''} onChange={handleChange} fullWidth select>
                                                 {bloodTypeOptions.map(option => <MenuItem key={option} value={option}>{option}</MenuItem>)}
                                             </TextField>
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField name="gender" label="Пол" value={profile.gender || ''} onChange={handleChange} fullWidth select>
-                                                {genderOptions.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+                                            <TextField name="gender" label={t('profileModal.labels.gender')} value={profile.gender || ''} onChange={handleChange} fullWidth select>
+                                                {genderOptions.map(option => <MenuItem key={option.value} value={option.value}>{t(option.labelKey)}</MenuItem>)}
                                             </TextField>
                                         </Grid>
-                                        <Grid item xs={12}><TextField name="chronic_diseases" label="Хронические заболевания" value={profile.chronic_diseases || ''} onChange={handleChange} fullWidth multiline rows={2} /></Grid>
-                                        <Grid item xs={12}><TextField name="allergies" label="Аллергии" value={profile.allergies || ''} onChange={handleChange} fullWidth multiline rows={2} /></Grid>
-                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Дополнительно" size="small" /></Divider></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="insurance_number" label="Номер страховки" value={profile.insurance_number || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="emergency_contact" label="Экстренный контакт" value={profile.emergency_contact || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12}><TextField name="chronic_diseases" label={t('profileModal.labels.chronicDiseases')} value={profile.chronic_diseases || ''} onChange={handleChange} fullWidth multiline rows={2} /></Grid>
+                                        <Grid item xs={12}><TextField name="allergies" label={t('profileModal.labels.allergies')} value={profile.allergies || ''} onChange={handleChange} fullWidth multiline rows={2} /></Grid>
+                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label={t('profileModal.dividers.additionalInfo')} size="small" /></Divider></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="insurance_number" label={t('profileModal.labels.insuranceNumber')} value={profile.insurance_number || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="emergency_contact" label={t('profileModal.labels.emergencyContact')} value={profile.emergency_contact || ''} onChange={handleChange} fullWidth /></Grid>
                                     </>
                                 )}
 
                                 {role === 'doctor' && (
                                     <>
-                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label="Профессиональные данные" size="small" /></Divider></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="specialty" label="Специализация" value={profile.specialty || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="experience_years" label="Стаж (лет)" type="number" value={profile.experience_years || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="work_phone" label="Рабочий телефон" value={profile.work_phone || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="office_number" label="Номер кабинета" value={profile.office_number || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="license_number" label="Номер лицензии" value={profile.license_number || ''} onChange={handleChange} fullWidth /></Grid>
-                                        <Grid item xs={12} sm={6}><TextField name="department" label="Отделение" value={profile.department || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12}><Divider sx={{ mt: 2 }}><Chip label={t('profileModal.dividers.professionalInfo')} size="small" /></Divider></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="specialty" label={t('profileModal.labels.specialty')} value={profile.specialty || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="experience_years" label={t('profileModal.labels.experienceYears')} type="number" value={profile.experience_years || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="work_phone" label={t('profileModal.labels.workPhone')} value={profile.work_phone || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="office_number" label={t('profileModal.labels.officeNumber')} value={profile.office_number || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="license_number" label={t('profileModal.labels.licenseNumber')} value={profile.license_number || ''} onChange={handleChange} fullWidth /></Grid>
+                                        <Grid item xs={12} sm={6}><TextField name="department" label={t('profileModal.labels.department')} value={profile.department || ''} onChange={handleChange} fullWidth /></Grid>
                                     </>
                                 )}
                             </Grid>
@@ -220,9 +223,9 @@ export default function ProfileModal({ open, onClose, role }) {
                 </Box>
 
                 <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', gap: 2, borderTop: '1px solid #e0e0e0', flexShrink: 0 }}>
-                    <Button onClick={() => onClose(false)} variant="outlined" disabled={saving}>Отмена</Button>
+                    <Button onClick={() => onClose(false)} variant="outlined" disabled={saving}>{t('profileModal.buttons.cancel')}</Button>
                     <Button onClick={handleSave} variant="contained" disabled={saving}>
-                        {saving ? <CircularProgress size={24} /> : 'Сохранить'}
+                        {saving ? <CircularProgress size={24} /> : t('profileModal.buttons.save')}
                     </Button>
                 </Box>
 

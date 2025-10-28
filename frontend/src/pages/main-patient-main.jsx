@@ -14,6 +14,9 @@ import { getAccessToken, getUserRole, logout } from "../api";
 import ServiceModal from '../components/ModalService';
 import ContactsModal from '../components/ModalContacts';
 import ProfileModal from '../components/ProfileModal';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../components/LanguageSwitcher';
+
 
 const ColorButton = styled(Button)(({ theme }) => ({
     color: theme.palette.getContrastText(blue[500]),
@@ -27,16 +30,18 @@ const MainPatientMainComponent = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
-
-    // Состояния для модальных окон
+    const { t } = useTranslation();
+    
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [isContactsModalOpen, setIsContactsModalOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-    // Состояния для меню
     const [mainMenuAnchor, setMainMenuAnchor] = useState(null);
     const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
-    const profileMenuButtonRef = useRef(null); // Ref для кнопки профиля
+    const profileMenuButtonRef = useRef(null); 
+    
+    // [ИЗМЕНЕНИЕ] Это состояние больше не нужно и удалено, так как ваши обработчики его не используют.
+    // const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
     const userRole = getUserRole();
 
@@ -46,17 +51,14 @@ const MainPatientMainComponent = () => {
             navigate('/patient');
             return;
         }
-
         const loadProfile = async () => {
             setLoading(true);
             try {
                 const res = await api.get('/patients/me/');
                 const { id, first_name, last_name } = res.data;
-
                 if (!first_name || !last_name) {
                     setIsProfileModalOpen(true);
                 }
-                
                 setProfile({ id, first_name, last_name });
             } catch (err) {
                 console.error('Ошибка при получении профиля пациента:', err);
@@ -67,25 +69,21 @@ const MainPatientMainComponent = () => {
                 setLoading(false);
             }
         };
-
         loadProfile();
     }, [navigate]);
 
-    // Обработчики главного меню
     const handleMainMenuOpen = (e) => setMainMenuAnchor(e.currentTarget);
     const handleMainMenuClose = () => setMainMenuAnchor(null);
 
-    // Обработчики меню профиля
+    // ВАШИ ОБРАБОТЧИКИ ОСТАЛИСЬ БЕЗ ИЗМЕНЕНИЙ
     const handleProfileMenuOpen = (e) => setProfileMenuAnchor(e.currentTarget);
     const handleProfileMenuClose = () => {
         setProfileMenuAnchor(null);
-        // Возвращаем фокус на элемент, открывший меню
         if (profileMenuButtonRef.current) {
             profileMenuButtonRef.current.focus();
         }
     };
 
-    // Обработчики модальных окон
     const handleLogout = () => {
         handleProfileMenuClose();
         logout();
@@ -99,9 +97,8 @@ const MainPatientMainComponent = () => {
 
     const handleProfileModalClose = (wasSuccessful) => {
         setIsProfileModalOpen(false);
-        // Перезагружаем страницу ТОЛЬКО если сохранение было успешным
         if (wasSuccessful) {
-            window.location.reload(); 
+            window.location.reload();
         }
     };
 
@@ -109,61 +106,65 @@ const MainPatientMainComponent = () => {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
                 <CircularProgress />
-                <Typography sx={{ ml: 2 }}>Загрузка профиля...</Typography>
+                <Typography sx={{ ml: 2 }}>{t('loadingProfile')}</Typography>
             </Box>
         );
     }
 
     return (
         <>
-            <Toolbar className="header">
-                {/* Левая часть хедера */}
-                <div className="header-left">
+            {/* ВАШ БЛОК TOOLBAR С МИНИМАЛЬНЫМИ ИСПРАВЛЕНИЯМИ */}
+            <Toolbar>
+                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
                     <IconButton onClick={handleMainMenuOpen}>
                         <MenuIcon fontSize="large" />
                     </IconButton>
                     <Menu anchorEl={mainMenuAnchor} open={Boolean(mainMenuAnchor)} onClose={handleMainMenuClose}>
-                        <MenuItem component={NavLink} to="/patient/main" onClick={handleMainMenuClose}>Главная</MenuItem>
-                        <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>Сервисы</MenuItem>
-                        <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>Контакты</MenuItem>
+                        {/* Исправил путь для пациента */}
+                        <MenuItem component={NavLink} to="/patient/main" onClick={handleMainMenuClose}>{t('header.main')}</MenuItem>
+                        <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>{t('header.services')}</MenuItem>
+                        <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>{t('header.contacts')}</MenuItem>
                     </Menu>
+                    {/* Исправил путь для пациента */}
                     <NavLink to="/patient/main" className='for-navs nav-link-main-main'>
                         <img src={logo} className='logo' alt="NovaMed Logo" />
                         <h2 className='logoName'>NovaMed</h2>
                     </NavLink>
-                </div>
+                </Box>
 
-                {/* Правая часть хедера (профиль) */}
-                <div 
-                    className='header-right2' 
-                    onClick={handleProfileMenuOpen}
-                    ref={profileMenuButtonRef} // Привязываем Ref
-                    tabIndex={-1} // Делаем элемент фокусируемым, но не для навигации Tab
-                    style={{ outline: 'none' }} // Убираем стандартную рамку фокуса
+                <Box sx={{ flexGrow: 3 }} />
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <LanguageSwitcher />
+                </Box>
+
+                <Box 
+                    sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, cursor: 'pointer' }}
+                    onClick={handleProfileMenuOpen} 
+                    ref={profileMenuButtonRef}
                 >
-                    <h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Пациент'}</h3>
+                    <h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : t('header.user')}</h3>
                     <Avatar sx={{ bgcolor: blue[500] }}>
-                        {profile?.first_name?.[0]?.toUpperCase() || 'П'}
+                        {profile?.first_name?.[0]?.toUpperCase() || 'U'}
                     </Avatar>
-                </div>
+                </Box>
+                
+                {/* [ИЗМЕНЕНИЕ] Здесь Menu теперь слушает правильные состояния, которые меняют ВАШИ обработчики */}
                 <Menu 
                     anchorEl={profileMenuAnchor} 
                     open={Boolean(profileMenuAnchor)} 
                     onClose={handleProfileMenuClose}
-                    // Убираем фокус с меню при его закрытии
-                    autoFocus={false}
                 >
-                    <MenuItem onClick={handleProfileModalOpen}>Изменить профиль</MenuItem>
-                    <MenuItem onClick={handleLogout}>Выйти</MenuItem>
+                    <MenuItem onClick={handleProfileModalOpen}>{t('header.edit_profile')}</MenuItem>
+                    <MenuItem onClick={handleLogout}>{t('header.logout')}</MenuItem>
                 </Menu>
             </Toolbar>
 
             {/* Основной контент */}
             <div className="wrap-for-patients-view">
                 <div className="pat-btns">
-                    <NavLink to="/patient/main/doctors"><ColorButton variant="contained">Запись к врачу</ColorButton></NavLink>
-                    <NavLink to="/patient/main/allowance"><ColorButton variant="contained">Доступные лекарства</ColorButton></NavLink>
-                    <NavLink to="/patient/main/appointments"><ColorButton variant="contained">Мои записи</ColorButton></NavLink>
+                    <NavLink to="/patient/main/doctors"><ColorButton variant="contained">{t('patientNav.bookDoctor')}</ColorButton></NavLink>
+                    <NavLink to="/patient/main/allowance"><ColorButton variant="contained">{t('patientNav.availableMeds')}</ColorButton></NavLink>
+                    <NavLink to="/patient/main/appointments"><ColorButton variant="contained">{t('patientNav.myAppointments')}</ColorButton></NavLink>
                 </div>
                 <div className="cont-for-patients-view">
                     <Outlet context={{ profile }} />

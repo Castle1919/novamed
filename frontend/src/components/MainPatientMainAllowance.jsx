@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { blue } from '@mui/material/colors';
 import { styled } from '@mui/material/styles';
-import Button from '@mui/material/Button';
-import Paper from '@mui/material/Paper';
-import InputBase from '@mui/material/InputBase';
-import IconButton from '@mui/material/IconButton';
+import {
+	Button, Paper, InputBase, IconButton, Box, Typography,
+	CircularProgress, Alert
+} from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { Box, Typography, CircularProgress, Alert } from '@mui/material';
 import MedicationIcon from '@mui/icons-material/Medication';
+import { useTranslation } from 'react-i18next'; // Импортируем хук
 import axios from '../api/axios';
 import userIcon from '../assets/medicaments1.png';
 import userIcon2 from '../assets/medicaments2.png';
-import MedicineDetailModal from './MedicineDetailModal'; // Импорт модалки
+import MedicineDetailModal from './MedicineDetailModal';
 
 const ColorButton = styled(Button)(({ theme }) => ({
 	color: theme.palette.getContrastText(blue[500]),
@@ -22,13 +22,12 @@ const ColorButton = styled(Button)(({ theme }) => ({
 }));
 
 export default function MainPatientMainAllowance() {
+	const { t } = useTranslation(); // Инициализируем функцию перевода
 	const [medicines, setMedicines] = useState([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState('');
 	const [query, setQuery] = useState('');
 	const [filteredMedicines, setFilteredMedicines] = useState([]);
-
-	// Состояния для модального окна
 	const [modalOpen, setModalOpen] = useState(false);
 	const [selectedMedicine, setSelectedMedicine] = useState(null);
 
@@ -48,13 +47,13 @@ export default function MainPatientMainAllowance() {
 				setFilteredMedicines(sortedMeds);
 			} catch (err) {
 				console.error('Error fetching active medicines:', err);
-				setError('Не удалось загрузить список препаратов.');
+				setError(t('allowancePage.errors.fetchError'));
 			} finally {
 				setLoading(false);
 			}
 		};
 		fetchMedicines();
-	}, []);
+	}, [t]); // Добавляем t в зависимости
 
 	useEffect(() => {
 		const lowercasedQuery = query.toLowerCase();
@@ -64,7 +63,6 @@ export default function MainPatientMainAllowance() {
 		setFilteredMedicines(filtered);
 	}, [query, medicines]);
 
-	// Обработчик для кнопки "Подробнее"
 	const handleDetailClick = (med) => {
 		setSelectedMedicine(med);
 		setModalOpen(true);
@@ -91,18 +89,18 @@ export default function MainPatientMainAllowance() {
 	return (
 		<div className="patient-history-main">
 			<div className="patient-history-input">
-				<h2>Мои активные препараты</h2>
+				<h2>{t('allowancePage.title')}</h2>
 				<Paper
 					component="form"
 					sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: 250 }}
 				>
 					<InputBase
 						sx={{ ml: 1, flex: 1 }}
-						placeholder="Введите название"
+						placeholder={t('allowancePage.search.placeholder')}
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 					/>
-					<IconButton type="button" sx={{ p: '10px' }} aria-label="search">
+					<IconButton type="button" sx={{ p: '10px' }} aria-label={t('allowancePage.search.ariaLabel')}>
 						<SearchIcon />
 					</IconButton>
 				</Paper>
@@ -112,7 +110,7 @@ export default function MainPatientMainAllowance() {
 				<Box sx={{ textAlign: 'center', py: 8, width: '100%' }}>
 					<MedicationIcon sx={{ fontSize: 80, color: '#ccc', mb: 2 }} />
 					<Typography variant="h6" color="text.secondary">
-						{query ? 'Ничего не найдено' : 'У вас нет активных назначений'}
+						{query ? t('allowancePage.noResults.foundNothing') : t('allowancePage.noResults.noActiveMeds')}
 					</Typography>
 				</Box>
 			) : (
@@ -122,7 +120,7 @@ export default function MainPatientMainAllowance() {
 							<img src={i % 2 === 0 ? userIcon : userIcon2} alt={med.medicine_name} className="patients-history-box-img" />
 							<h3>{med.medicine_name}</h3>
 							<ColorButton variant="contained" onClick={() => handleDetailClick(med)}>
-								Подробнее
+								{t('allowancePage.card.detailsButton')}
 							</ColorButton>
 						</div>
 					))}

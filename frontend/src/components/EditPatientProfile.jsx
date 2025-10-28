@@ -28,7 +28,6 @@ export default function EditPatientProfile({ open, onClose, onSaved }) {
     const fetchProfile = async () => {
       try {
         const resp = await axios.get('/accounts/profile/');
-        // Now fetch patient by /patients/me/
         const patient = await axios.get('/patients/me/');
         setForm(patient.data);
       } catch (err) {

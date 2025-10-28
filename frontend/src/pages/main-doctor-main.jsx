@@ -122,35 +122,44 @@ const MainDoctorMainComponent = () => {
 
     return (
         <>
-            <Toolbar className='header'>
-                <div className='header-left'>
-                    <IconButton onClick={handleMainMenuOpen}>
-                        <MenuIcon fontSize="large" />
-                    </IconButton>
-                    <Menu anchorEl={mainMenuAnchor} open={Boolean(mainMenuAnchor)} onClose={handleMainMenuClose}>
-                        <MenuItem component={NavLink} to="/doctor/main" onClick={handleMainMenuClose}>{t('header.main')}</MenuItem>
-                        <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>{t('header.services')}</MenuItem>
-                        <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>{t('header.contacts')}</MenuItem>
-                    </Menu>
-                    <NavLink to="/doctor/main" className='for-navs nav-link-main-main'>
-                        <img src={logo} className='logo' alt="NovaMed Logo" />
-                        <h2 className='logoName'>NovaMed</h2>
-                    </NavLink>
-                </div>
 
-                {/* Правая часть хедера (профиль) */}
-                <LanguageSwitcher />
-                <div className='header-right2' onClick={handleProfileMenuOpen} ref={profileMenuButtonRef} tabIndex={-1}>
-                    <h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Пользователь'}</h3>
-                    <Avatar sx={{ bgcolor: blue[500] }}>
-                        {profile?.first_name?.[0]?.toUpperCase() || 'U'}
-                    </Avatar>
-                </div>
-                <Menu anchorEl={profileMenuButtonRef.current} open={isProfileMenuOpen} onClose={handleProfileMenuClose}>
-                    <MenuItem onClick={handleProfileModalOpen}>{t('header.edit_profile')}</MenuItem>
-                    <MenuItem onClick={handleLogout}>{t('header.logout')}</MenuItem>
+        <Toolbar>
+            <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                <IconButton onClick={handleMainMenuOpen}>
+                    <MenuIcon fontSize="large" />
+                </IconButton>
+                <Menu anchorEl={mainMenuAnchor} open={Boolean(mainMenuAnchor)} onClose={handleMainMenuClose}>
+                    <MenuItem component={NavLink} to="/doctor/main" onClick={handleMainMenuClose}>{t('header.main')}</MenuItem>
+                    <MenuItem onClick={() => { setIsServiceModalOpen(true); handleMainMenuClose(); }}>{t('header.services')}</MenuItem>
+                    <MenuItem onClick={() => { setIsContactsModalOpen(true); handleMainMenuClose(); }}>{t('header.contacts')}</MenuItem>
                 </Menu>
-            </Toolbar>
+                <NavLink to="/doctor/main" className='for-navs nav-link-main-main'>
+                    <img src={logo} className='logo' alt="NovaMed Logo" />
+                    <h2 className='logoName'>NovaMed</h2>
+                </NavLink>
+            </Box>
+
+            <Box sx={{ flexGrow: 3 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <LanguageSwitcher />
+            </Box>
+
+            <Box 
+                sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2, cursor: 'pointer' }}
+                onClick={handleProfileMenuOpen} 
+                ref={profileMenuButtonRef}
+            >
+                <h3>{profile ? `${profile.first_name} ${profile.last_name}`.trim() : 'Пользователь'}</h3>
+                <Avatar sx={{ bgcolor: blue[500] }}>
+                    {profile?.first_name?.[0]?.toUpperCase() || 'U'}
+                </Avatar>
+            </Box>
+
+            <Menu anchorEl={profileMenuButtonRef.current} open={isProfileMenuOpen} onClose={handleProfileMenuClose}>
+                <MenuItem onClick={handleProfileModalOpen}>{t('header.edit_profile')}</MenuItem>
+                <MenuItem onClick={handleLogout}>{t('header.logout')}</MenuItem>
+            </Menu>
+        </Toolbar>
 
             {/* Основной контент */}
             <div className='wrap-for-patients-view'>
@@ -176,6 +185,5 @@ const MainDoctorMainComponent = () => {
     );
 };
 
-// Оборачиваем в React.memo для оптимизации
 const MainDoctorMain = React.memo(MainDoctorMainComponent);
 export default MainDoctorMain;

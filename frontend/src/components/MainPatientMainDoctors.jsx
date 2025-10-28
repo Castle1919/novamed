@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import { useTranslation } from 'react-i18next'; // Импортируем хук
 import axios from '../api/axios';
 import AppointmentBookingModal from './AppointmentBookingModal';
 
@@ -24,6 +25,7 @@ const ColorButton = styled(Button)(({ theme }) => ({
 }));
 
 const DoctorsPageComponent = () => {
+  const { t } = useTranslation(); // Инициализируем функцию перевода
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,11 +35,11 @@ const DoctorsPageComponent = () => {
 
   useEffect(() => {
     const fetchDoctors = async () => {
-      setLoading(true); // Убедимся, что загрузка начинается
+      setLoading(true);
       try {
         const token = localStorage.getItem('access');
         if (!token) {
-          setError('Вы не авторизованы');
+          setError(t('doctorsPage.errors.unauthorized'));
           return;
         }
         
@@ -49,7 +51,7 @@ const DoctorsPageComponent = () => {
         setDoctors(doctorsList);
 
       } catch (err) {
-        setError('Ошибка при загрузке данных о врачах');
+        setError(t('doctorsPage.errors.fetchError'));
         console.error('Error fetching doctors:', err);
       } finally {
         setLoading(false);
@@ -57,13 +59,13 @@ const DoctorsPageComponent = () => {
     };
 
     fetchDoctors();
-  }, []);
+  }, [t]); // Добавляем t в зависимости useEffect
 
   const handleBookAppointment = (doctor) => {
     const doctorData = {
       id: doctor.id,
       name: `${doctor.last_name || ''} ${doctor.first_name || ''} ${doctor.middle_name || ''}`.trim(),
-      specialization: doctor.specialty || doctor.specialization || 'Не указана',
+      specialization: doctor.specialty || doctor.specialization || t('doctorsPage.doctorCard.noSpecialty'),
       office_number: doctor.office_number || doctor.office || '',
     };
     setSelectedDoctor(doctorData);
@@ -73,7 +75,7 @@ const DoctorsPageComponent = () => {
   const handleBookingClose = (wasSuccessful) => {
     setBookingModalOpen(false);
     if (wasSuccessful) {
-      setSuccessMessage('Вы успешно записались на приём!');
+      setSuccessMessage(t('doctorsPage.success.bookingMessage'));
       setTimeout(() => {
         setSuccessMessage('');
       }, 5000);
@@ -103,7 +105,7 @@ const DoctorsPageComponent = () => {
                     <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <CheckCircleIcon sx={{ fontSize: 30 }} />
                         <Box>
-                            <Typography variant="subtitle1" fontWeight="bold">Успешно!</Typography>
+                            <Typography variant="subtitle1" fontWeight="bold">{t('doctorsPage.success.title')}</Typography>
                             <Typography variant="body2">{successMessage}</Typography>
                         </Box>
                     </CardContent>
@@ -127,7 +129,7 @@ const DoctorsPageComponent = () => {
         {doctors.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
                 <LocalHospitalIcon style={{ fontSize: 60, color: '#ccc', marginBottom: '10px' }} />
-                <p>Нет врачей для отображения</p>
+                <p>{t('doctorsPage.noDoctorsMessage')}</p>
             </div>
         ) : (
             <div className="doctors-grid">
@@ -138,13 +140,13 @@ const DoctorsPageComponent = () => {
                             alt={`${doc.first_name} ${doc.last_name}`}
                             sx={{ width: 80, height: 80, bgcolor: blue[500], fontSize: '24px' }}
                         >
-                            {!doc.avatar && (doc.first_name?.[0] || 'Д')}
+                            {!doc.avatar && (doc.first_name?.[0] || t('doctorsPage.doctorCard.doctorInitial'))}
                         </Avatar>
 
                         <h3>{doc.last_name || ''} {doc.first_name || ''}</h3>
 
                         <p>
-                            {doc.specialty || doc.specialization || 'Специализация не указана'}
+                            {doc.specialty || doc.specialization || t('doctorsPage.doctorCard.noSpecialty')}
                         </p>
 
                         <ColorButton 
@@ -152,7 +154,7 @@ const DoctorsPageComponent = () => {
                             fullWidth
                             onClick={() => handleBookAppointment(doc)}
                         >
-                            Записаться на приём
+                            {t('doctorsPage.doctorCard.bookButton')}
                         </ColorButton>
                     </div>
                 ))}

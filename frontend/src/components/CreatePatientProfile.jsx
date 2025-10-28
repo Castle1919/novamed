@@ -99,7 +99,7 @@ export default function CreatePatientProfile({ open, onClose, onCreated, disable
   };
 
   const handleModalClose = (e, reason) => {
-    if (disableClose) return; // prevent closing when disabled
+    if (disableClose) return;
     if (onClose) onClose();
   };
 

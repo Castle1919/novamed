@@ -1,13 +1,15 @@
 import React from 'react'
 import iconDef from '../assets/def-patient.png'
+import { useTranslation } from 'react-i18next';
 
 export default function MainPatientMainDefault() {
+	const { t } = useTranslation();
 	return (
 		<>
 			<div className="def-div">
 				<img src={iconDef} alt="" />
-				<h2>Выберите действие!</h2>
-				<p>Вы можете посмотреть информацию и записаться на прием, узнать информацию о врачах или посмотреть доступные вам лекарства</p>
+				<h2>{t('patient-default.title')}</h2>
+				<p>{t('patient-default.text')}</p>
 			</div>
 		</>
 	)

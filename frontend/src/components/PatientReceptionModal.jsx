@@ -15,9 +15,6 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import DescriptionIcon from '@mui/icons-material/Description';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ru';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -25,6 +22,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker, PickersDay } from '@mui/x-date-pickers';
 import axios from '../api/axios';
 import generatePdf from './pdfGenerator';
+import { useTranslation } from 'react-i18next';
 
 dayjs.locale('ru');
 
@@ -59,11 +57,12 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 	const [uploading, setUploading] = useState(false);
 	const [pendingFiles, setPendingFiles] = useState([]);
 	const [currentFiles, setCurrentFiles] = useState([]);
+	const { t, i18n } = useTranslation();
 
 	const holidays = [
 		'2024-01-01', '2024-01-02', '2024-01-07', '2024-03-08', '2024-03-21', '2024-03-22', '2024-03-23', '2024-05-01', '2024-05-07', '2024-05-09', '2024-07-06', '2024-08-30', '2024-10-25', '2024-12-16', '2024-12-17', '2025-01-01', '2025-01-02', '2025-01-07', '2025-03-08', '2025-03-21', '2025-03-22', '2025-03-23', '2025-05-01', '2025-05-07', '2025-05-09', '2025-07-06', '2025-08-30', '2025-10-25', '2025-12-16', '2025-12-17',
 	];
-
+	
 	const patientId = appointment?.patient_details?.id;
 
 	useEffect(() => {
@@ -256,10 +255,10 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 	const syncActiveMedicines = async (isActive) => {
 		const doctorId = doctorProfile?.id;
 
-		console.log('[ОТЛАДКА SYNC] Начало синхронизации');
-		console.log('[ОТЛАДКА SYNC] doctorProfile:', doctorProfile);
-		console.log('[ОТЛАДКА SYNC] doctorId:', doctorId);
-		console.log('[ОТЛАДКА SYNC] patientId:', patientId);
+		// console.log('[ОТЛАДКА SYNC] Начало синхронизации');
+		// console.log('[ОТЛАДКА SYNC] doctorProfile:', doctorProfile);
+		// console.log('[ОТЛАДКА SYNC] doctorId:', doctorId);
+		// console.log('[ОТЛАДКА SYNC] patientId:', patientId);
 
 		if (!doctorId || !patientId) {
 			console.error("syncActiveMedicines: doctorId или patientId не найдены. Синхронизация отменена.");
@@ -420,7 +419,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 		<Modal open={open} onClose={() => onClose(false)}>
 			<Box sx={style}>
 				<Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-					<Typography variant="h6">Прием пациента: {appointment.patient_details?.first_name} {appointment.patient_details?.last_name}</Typography>
+					<Typography variant="h6">{t('patient-reception-modal.patient_reception')} {appointment.patient_details?.first_name} {appointment.patient_details?.last_name}</Typography>
 					<IconButton onClick={() => onClose(false)}><CloseIcon /></IconButton>
 				</Box>
 
@@ -428,31 +427,31 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 					<Grid container spacing={3}>
 						<Grid item xs={12} md={4}>
 							<Box sx={{ p: 2, bgcolor: '#f5f5f5', borderRadius: 1, mb: 2 }}>
-								<Typography variant="subtitle1" sx={{ mb: 1 }}>Информация о пациенте</Typography>
+								<Typography variant="subtitle1" sx={{ mb: 1 }}>{t('patient-reception-modal.patient_info')}</Typography>
 								<Typography variant="body2"><strong>Телефон:</strong> {appointment.patient_details?.phone || '-'}</Typography>
-								<Typography variant="body2"><strong>ИИН:</strong> {appointment.patient_details?.iin || '-'}</Typography>
-								<Typography variant="body2"><strong>Возраст:</strong> {appointment.patient_details?.age || '-'}</Typography>
+								<Typography variant="body2"><strong>{t('patient-reception-modal.iin')}</strong> {appointment.patient_details?.iin || '-'}</Typography>
+								<Typography variant="body2"><strong>{t('patient-reception-modal.age')}</strong> {appointment.patient_details?.age || '-'}</Typography>
 								{appointment.patient_details?.allergies && (
 									<Alert severity="warning" sx={{ mt: 1, fontSize: '0.75rem' }}>
-										Аллергии: {appointment.patient_details.allergies}
+										{t('patient-reception-modal.alerg')} {appointment.patient_details.allergies}
 									</Alert>
 								)}
 							</Box>
 
-							<Typography variant="subtitle1" sx={{ mb: 1 }}>История приемов</Typography>
+							<Typography variant="subtitle1" sx={{ mb: 1 }}>{t('patient-reception-modal.reception_history')}</Typography>
 							{history.length === 0 ? (
-								<Typography variant="body2" color="text.secondary">Нет завершенных приемов</Typography>
+								<Typography variant="body2" color="text.secondary">{t('patient-reception-modal.no_completed_receptions')}</Typography>
 							) : history.slice(0, 5).map((rec) => (
 								<Accordion key={rec.appointment_id}>
 									<AccordionSummary expandIcon={<ExpandMoreIcon />}>
 										<Typography variant="body2">
-											{dayjs(rec.date).format('DD.MM.YYYY')} — {rec.diagnosis || 'Нет диагноза'}
+											{dayjs(rec.date).format('DD.MM.YYYY')} — {rec.diagnosis || t('patient-reception-modal.no_diagnosis')}
 										</Typography>
 									</AccordionSummary>
 									<AccordionDetails>
 										{rec.prescriptions?.length > 0 && (
 											<>
-												<Typography variant="caption" sx={{ fontWeight: 600 }}>Назначения:</Typography>
+												<Typography variant="caption" sx={{ fontWeight: 600 }}>{t('patient-reception-modal.purpose')}</Typography>
 												{rec.prescriptions.map(p => (
 													<Typography key={p.id} variant="body2">• {p.medicine}</Typography>
 												))}
@@ -466,7 +465,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 						<Grid item xs={12} md={8}>
 							<Grid container spacing={2}>
 								<Grid item xs={12}>
-									<TextField label="Жалобы пациента" fullWidth multiline rows={2}
+									<TextField label={t('patient-reception-modal.patient_complaints')} fullWidth multiline rows={2}
 										value={form.complaints} onChange={e => setForm({ ...form, complaints: e.target.value })} />
 								</Grid>
 								<Grid item xs={12} md={6}>
@@ -474,7 +473,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 										value={form.anamnesis} onChange={e => setForm({ ...form, anamnesis: e.target.value })} />
 								</Grid>
 								<Grid item xs={12} md={6}>
-									<TextField label="Объективные данные" fullWidth multiline rows={2}
+									<TextField label= {t('patient-reception-modal.objective_data')} fullWidth multiline rows={2}
 										value={form.objective_data} onChange={e => setForm({ ...form, objective_data: e.target.value })} />
 								</Grid>
 
@@ -484,9 +483,9 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 								</Grid>
 								<Grid item xs={12} md={4}>
 									<FormControl fullWidth>
-										<InputLabel id="tpl-label">Шаблоны</InputLabel>
-										<Select labelId="tpl-label" label="Шаблоны" value="" onChange={(e) => applyTemplate(e.target.value)}>
-											<MenuItem value="" disabled>Выберите...</MenuItem>
+										<InputLabel id="tpl-label">{t('patient-reception-modal.selected')}</InputLabel>
+										<Select labelId="tpl-label" label={t('patient-reception-modal.selected')} value="" onChange={(e) => applyTemplate(e.target.value)}>
+											<MenuItem value="" disabled>{t('patient-reception-modal.choose')}</MenuItem>
 											{templates.map(t => (
 												<MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>
 											))}
@@ -495,18 +494,18 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 								</Grid>
 
 								<Grid item xs={12}>
-									<TextField label="Рекомендации" fullWidth multiline rows={2}
+									<TextField label={t('patient-reception-modal.recom')} fullWidth multiline rows={2}
 										value={form.recommendations} onChange={e => setForm({ ...form, recommendations: e.target.value })} />
 								</Grid>
 
 								<Grid item xs={12}>
-									<TextField label="Заметки врача (приватно)" fullWidth multiline rows={2}
+									<TextField label={t('patient-reception-modal.doctors_notes')} fullWidth multiline rows={2}
 										value={form.doctor_notes} onChange={e => setForm({ ...form, doctor_notes: e.target.value })} />
 								</Grid>
 							</Grid>
 
 							<Divider sx={{ my: 2 }} />
-							<Typography variant="subtitle1" sx={{ mb: 1 }}><LocalHospitalIcon fontSize="small" sx={{ mr: .5 }} /> Рецепт</Typography>
+							<Typography variant="subtitle1" sx={{ mb: 1 }}><LocalHospitalIcon fontSize="small" sx={{ mr: .5 }} /> {t('patient-reception-modal.recipe')}</Typography>
 
 							{AllergyAlert}
 
@@ -515,7 +514,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 									<Grid container spacing={1.5}>
 										<Grid item xs={12} md={6}>
 											<FormControl fullWidth>
-												<InputLabel>Препарат</InputLabel>
+												<InputLabel>{t('patient-reception-modal.drag')}</InputLabel>
 												<Select label="Препарат" value={p.medicine_id || ''} onChange={(e) => onSelectMedicine(idx, e.target.value)}>
 													{medicines.map(m => (
 														<MenuItem key={m.id} value={m.id}>
@@ -527,31 +526,31 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 											{p.warning && <Alert severity="warning" sx={{ mt: 1, fontSize: '0.75rem' }}>{p.warning}</Alert>}
 										</Grid>
 										<Grid item xs={12} md={6}>
-											<TextField label="Дозировка" fullWidth value={p.dosage} onChange={e => updatePrescription(idx, { dosage: e.target.value })} />
+											<TextField label={t('patient-reception-modal.dosage')} fullWidth value={p.dosage} onChange={e => updatePrescription(idx, { dosage: e.target.value })} />
 										</Grid>
 										<Grid item xs={12} md={6}>
-											<TextField label="Частота" fullWidth placeholder="3 раза в день" value={p.frequency} onChange={e => updatePrescription(idx, { frequency: e.target.value })} />
+											<TextField label={t('patient-reception-modal.frequency')} fullWidth placeholder={t('patient-reception-modal.times_day')} value={p.frequency} onChange={e => updatePrescription(idx, { frequency: e.target.value })} />
 										</Grid>
 										<Grid item xs={12} md={6}>
-											<TextField label="Длительность" fullWidth placeholder="7 дней" value={p.duration} onChange={e => updatePrescription(idx, { duration: e.target.value })} />
+											<TextField label={t('patient-reception-modal.duration')} fullWidth placeholder={t('patient-reception-modal.7days')} value={p.duration} onChange={e => updatePrescription(idx, { duration: e.target.value })} />
 										</Grid>
 										<Grid item xs={11}>
-											<TextField label="Указания" fullWidth value={p.instructions} onChange={e => updatePrescription(idx, { instructions: e.target.value })} />
+											<TextField label={t('patient-reception-modal.instructions')} fullWidth value={p.instructions} onChange={e => updatePrescription(idx, { instructions: e.target.value })} />
 										</Grid>
 										<Grid item xs={1} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-											<Tooltip title="Удалить"><IconButton onClick={() => removePrescription(idx)}><DeleteIcon /></IconButton></Tooltip>
+											<Tooltip title={t('patient-reception-modal.delete')}><IconButton onClick={() => removePrescription(idx)}><DeleteIcon /></IconButton></Tooltip>
 										</Grid>
 									</Grid>
 								</Box>
 							))}
 
 							<Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-								<Button variant="outlined" onClick={addPrescription} startIcon={<AddIcon />}>Добавить</Button>
+								<Button variant="outlined" onClick={addPrescription} startIcon={<AddIcon />}>{t('patient-reception-modal.add')}</Button>
 								<Button variant="outlined" onClick={printPrescriptionPDF} startIcon={<PictureAsPdfIcon />}>PDF</Button>
 							</Box>
 
 							<Divider sx={{ my: 2 }} />
-							<Typography variant="subtitle1" sx={{ mb: 1 }}><DescriptionIcon fontSize="small" sx={{ mr: .5 }} /> Файлы</Typography>
+							<Typography variant="subtitle1" sx={{ mb: 1 }}><DescriptionIcon fontSize="small" sx={{ mr: .5 }} /> {t('patient-reception-modal.files')} </Typography>
 
 							<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
 								<input
@@ -564,23 +563,23 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 										if (!file) return;
 										const allowed = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png'];
 										if (file.size > 5 * 1024 * 1024) {
-											setSnack({ open: true, message: 'Размер > 5 МБ', severity: 'error' });
+											setSnack({ open: true, message: t('patient-reception-modal.size'), severity: 'error' });
 											e.target.value = '';
 											return;
 										}
 										if (!allowed.includes(file.type)) {
-											setSnack({ open: true, message: 'Недопустимый формат', severity: 'error' });
+											setSnack({ open: true, message: t('patient-reception-modal.no_format'), severity: 'error' });
 											e.target.value = '';
 											return;
 										}
 										setPendingFiles(prev => [...prev, { file, title: file.name, file_type: 'analysis' }]);
-										setSnack({ open: true, message: 'Файл добавлен в очередь', severity: 'info' });
+										setSnack({ open: true, message: t('patient-reception-modal.file_q'), severity: 'info' });
 										e.target.value = '';
 									}}
 								/>
 								<label htmlFor="file-input">
 									<Button variant="outlined" component="span" startIcon={<CloudUploadIcon />} disabled={uploading} size="small">
-										Выбрать
+										{t('patient-reception-modal.select')}
 									</Button>
 								</label>
 							</Box>
@@ -591,7 +590,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 										<Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
 											<DescriptionIcon fontSize="small" />
 											<Typography variant="body2">{f.title}</Typography>
-											<Chip size="small" label="ожидает" />
+											<Chip size="small" label={t('patient-reception-modal.wait')} />
 											<IconButton size="small" onClick={() => setPendingFiles(prev => prev.filter((_, idx) => idx !== i))}>
 												<DeleteIcon fontSize="small" />
 											</IconButton>
@@ -604,7 +603,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 							<Box sx={{ mb: 2 }}>
 								<FormControlLabel
 									control={<Checkbox checked={needFollowUp} onChange={(e) => setNeedFollowUp(e.target.checked)} />}
-									label={<Typography variant="subtitle1"><EventAvailableIcon fontSize="small" sx={{ mr: .5, verticalAlign: 'middle' }} /> Назначить повторный визит</Typography>}
+									label={<Typography variant="subtitle1"><EventAvailableIcon fontSize="small" sx={{ mr: .5, verticalAlign: 'middle' }} /> {t('patient-reception-modal.schedule_visit')} </Typography>}
 								/>
 							</Box>
 
@@ -612,9 +611,9 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 								<Box sx={{ mt: -1, mb: 2 }}>
 									<Grid container spacing={2}>
 										<Grid item xs={12} md={6}>
-											<LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
+											<LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={i18n.language}>
 												<DatePicker
-													label="Дата"
+													label={t('patient-reception-modal.date')}
 													value={followUpDate}
 													onChange={(val) => {
 														setFollowUpDate(val);
@@ -630,15 +629,15 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 
 										<Grid item xs={12} md={6}>
 											{!followUpDate ? (
-												<Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Выберите дату</Typography>
+												<Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>{t('patient-reception-modal.schedule_visit')}</Typography>
 											) : loadingSlots ? (
 												<Box sx={{ display: 'flex', height: '40px' }}><CircularProgress size={24} /></Box>
 											) : availableSlots.length === 0 ? (
-												<Alert severity="info">Нет слотов</Alert>
+												<Alert severity="info">{t('patient-reception-modal.no_slots')}</Alert>
 											) : (
 												<FormControl fullWidth required size="small">
-													<InputLabel>Время</InputLabel>
-													<Select label="Время" value={followUpTime || ''} onChange={(e) => setFollowUpTime(e.target.value)}>
+													<InputLabel>{t('patient-reception-modal.time')}</InputLabel>
+													<Select label={t('patient-reception-modal.time')} value={followUpTime || ''} onChange={(e) => setFollowUpTime(e.target.value)}>
 														{availableSlots.map((slot, idx) => {
 															const time = getSlotTime(slot);
 															return <MenuItem key={idx} value={time}>{time}</MenuItem>;
@@ -655,14 +654,14 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 				</Box>
 
 				<Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-					<Button onClick={() => onClose(false)} disabled={saving}>Отмена</Button>
+					<Button onClick={() => onClose(false)} disabled={saving}>{t('patient-reception-modal.cancel')}</Button>
 					<Button
 						variant="contained"
 						onClick={completeReception}
 						startIcon={saving ? <CircularProgress size={18} /> : <SaveIcon />}
 						disabled={saving || uploading}
 					>
-						{saving ? 'Сохранение...' : 'Завершить прием'}
+						{saving ? t('patient-reception-modal.saved') : t('patient-reception-modal.complete_intake')}
 					</Button>
 				</Box>
 

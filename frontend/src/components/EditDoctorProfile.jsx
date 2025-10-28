@@ -38,7 +38,7 @@ const DoctorSchema = Yup.object().shape({
         .required('Фамилия обязательна'),
     birth_date: Yup.date()
         .max(new Date(), 'Дата рождения не может быть в будущем')
-        .test('age', 'Врач должен быть старше 22 лет', function(value) {
+        .test('age', 'Врач должен быть старше 22 лет', function (value) {
             if (!value) return false;
             const today = new Date();
             const birthDate = new Date(value);
@@ -175,9 +175,9 @@ export default function EditDoctorProfile({ open, onClose, onSaved, disableClose
     if (!open) return null;
 
     return (
-        <Modal 
-            open={open} 
-            onClose={handleModalClose} 
+        <Modal
+            open={open}
+            onClose={handleModalClose}
             aria-labelledby="edit-doctor-title"
         >
             <Box sx={MODAL_STYLE}>
@@ -215,7 +215,6 @@ export default function EditDoctorProfile({ open, onClose, onSaved, disableClose
                                     onClose();
                                 }
 
-                                // Если профиль был создан впервые, перезагружаем страницу
                                 if (!profileExists) {
                                     window.location.href = '/doctor/main';
                                 }
@@ -226,16 +225,16 @@ export default function EditDoctorProfile({ open, onClose, onSaved, disableClose
                                 if (data && typeof data === 'object') {
                                     const fieldErrors = {};
                                     for (const k in data) {
-                                        fieldErrors[k] = Array.isArray(data[k]) 
-                                            ? data[k].join(' ') 
+                                        fieldErrors[k] = Array.isArray(data[k])
+                                            ? data[k].join(' ')
                                             : data[k];
                                     }
                                     setErrors(fieldErrors);
                                 } else if (data) {
                                     setErrors({ non_field_errors: data });
                                 } else {
-                                    setErrors({ 
-                                        non_field_errors: err.message || 'Ошибка при сохранении' 
+                                    setErrors({
+                                        non_field_errors: err.message || 'Ошибка при сохранении'
                                     });
                                 }
                             } finally {
@@ -255,12 +254,12 @@ export default function EditDoctorProfile({ open, onClose, onSaved, disableClose
                         }) => (
                             <Box component="form" onSubmit={handleSubmit}>
                                 {errors.non_field_errors && (
-                                    <div style={{ 
-                                        color: '#d32f2f', 
+                                    <div style={{
+                                        color: '#d32f2f',
                                         backgroundColor: '#ffebee',
                                         padding: '10px',
                                         borderRadius: '4px',
-                                        marginBottom: 8 
+                                        marginBottom: 8
                                     }}>
                                         {errors.non_field_errors}
                                     </div>
@@ -411,9 +410,9 @@ export default function EditDoctorProfile({ open, onClose, onSaved, disableClose
                                             Отмена
                                         </Button>
                                     )}
-                                    <Button 
-                                        type="submit" 
-                                        variant="contained" 
+                                    <Button
+                                        type="submit"
+                                        variant="contained"
                                         disabled={isSubmitting}
                                         sx={{ minWidth: 120 }}
                                     >

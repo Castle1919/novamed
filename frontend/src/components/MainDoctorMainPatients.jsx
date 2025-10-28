@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import dayjs from 'dayjs';
-import 'dayjs/locale/ru';
 import { DemoContainer, DemoItem } from '@mui/x-date-pickers/internals/demo';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -20,15 +19,17 @@ import Button from '@mui/material/Button';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import userIcon from '../assets/user-icon2.png';
 import axios from '../api/axios';
 import { getAccessToken } from '../api';
 import PatientReceptionModal from './PatientReceptionModal';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+import 'dayjs/locale/ru';
+import 'dayjs/locale/kk';
 
-
-dayjs.locale('ru');
+// dayjs.locale('ru');
 
 const ColorButton = styled(Button)(({ theme }) => ({
 	color: theme.palette.getContrastText(blue[500]),
@@ -56,6 +57,21 @@ export default function MainDoctorMainPatients() {
 		'2025-07-06', '2025-08-30', '2025-10-25',
 		'2025-12-16', '2025-12-17',
 	];
+	const { t } = useTranslation();
+	useEffect(() => {
+		const currentLanguage = i18n.language;
+		dayjs.locale(currentLanguage);
+		// Принудительно обновляем объекты dayjs с новой локалью
+		setValue(prev => prev.locale(currentLanguage));
+		setSelectedDate(prev => prev.locale(currentLanguage));
+	}, [i18n.language]);
+
+	// --- ИСПРАВЛЕНИЕ ЛОГИКИ ЗАГРУЗКИ ---
+	useEffect(() => {
+		// Загружаем данные только один раз при монтировании
+		loadAllAppointments();
+		fetchAppointmentsByDate(selectedDate);
+	}, []); // Пустой массив зависимостей
 
 	// Функция для загрузки ВСЕХ записей врача
 	const loadAllAppointments = async () => {
@@ -193,20 +209,12 @@ export default function MainDoctorMainPatients() {
 
 	// Обработчик изменения даты
 	const handleChange = (newValue) => {
-		setValue(newValue);
-		setSelectedDate(newValue);
-		if (newValue) {
+		setValue(newValue.locale(i18n.language)); 
+        setSelectedDate(newValue.locale(i18n.language));
+        if (newValue) {
 			fetchAppointmentsByDate(newValue);
 		}
 	};
-
-	// Загружаем записи при монтировании
-	useEffect(() => {
-		fetchAppointmentsByDate(selectedDate);
-		loadAllAppointments();
-	}, []);
-
-
 
 	const handleStartReception = (appointment) => {
 		setSelectedAppointment(appointment);
@@ -223,7 +231,7 @@ export default function MainDoctorMainPatients() {
 	return (
 		<div className="div-for-calendar-and-patients">
 			<div className="calendar">
-				<LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="ru">
+				<LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={i18n.language}>
 					<DemoContainer components={['DateCalendar']}>
 						<DemoItem>
 							<DateCalendar
@@ -241,14 +249,43 @@ export default function MainDoctorMainPatients() {
 					size="small"
 					onClick={() => setShowLegend(!showLegend)}
 					startIcon={showLegend ? <ExpandLessIcon /> : <InfoOutlinedIcon />}
-					sx={{ mt: 1, width: '100%', textTransform: 'none' }}
+					sx={{ alignItems:'center', width: '100%', textTransform: 'none' }}
 				>
-					{showLegend ? 'Скрыть обозначения' : 'Показать обозначения'}
+					{showLegend ? t("main-doctor-patients.show_legend") : t("main-doctor-patients.hide_legend")}
 				</Button>
 
 				<Collapse in={showLegend}>
 					<Box sx={{ mt: 1, p: 1.5, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-						{/* ...содержимое легенды... */}
+						<Typography variant="caption" sx={{ display: 'block', mb: 0.5, fontWeight: 600, fontSize: '0.7rem' }}>
+							{t("main-doctor-patients.legend_title")}
+						</Typography>
+						<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+								<Box sx={{ 
+									width: 10, 
+									height: 10, 
+									bgcolor: '#e8f5e9', 
+									border: '2px solid #4caf50', 
+									borderRadius: '2px',
+									flexShrink: 0 
+								}} />
+								<Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{t("main-doctor-patients.today")}</Typography>
+							</Box>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+								<Box sx={{ 
+									width: 10, 
+									height: 10, 
+									bgcolor: '#ef5350', 
+									borderRadius: '2px',
+									flexShrink: 0 
+								}} />
+								<Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{t("main-doctor-patients.holiday")}</Typography>
+							</Box>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+								<Typography variant="caption" sx={{ color: '#1976d2', fontSize: '0.9rem', lineHeight: 1 }}>●</Typography>
+								<Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{t("main-doctor-patients.sheduled_rec")}</Typography>
+							</Box>
+						</Box>
 					</Box>
 				</Collapse>
 			</div>
@@ -258,7 +295,7 @@ export default function MainDoctorMainPatients() {
 			<div className="reception-container">
 				<Box sx={{ mb: 2, p: 2, bgcolor: '#f0f4f8', borderRadius: 2 }}>
 					<Typography variant="h6" sx={{ fontWeight: 600 }}>
-						Записи на {selectedDate.format('DD MMMM YYYY')}
+						{t("main-doctor-patients.reception")}  {selectedDate.format('DD MMMM YYYY')}
 					</Typography>
 				</Box>
 
@@ -276,7 +313,7 @@ export default function MainDoctorMainPatients() {
 					<Box sx={{ textAlign: 'center', py: 4 }}>
 						<CalendarTodayIcon sx={{ fontSize: 60, color: '#ccc', mb: 2 }} />
 						<Typography variant="body1" color="text.secondary">
-							На выбранную дату записей нет
+							{t("main-doctor-patients.no-entries")}
 						</Typography>
 					</Box>
 				) : (
@@ -296,26 +333,26 @@ export default function MainDoctorMainPatients() {
 
             <div className="reception-card-info">
                 <h3>
-                    {appointment.patient_details?.first_name || 'Имя'} {appointment.patient_details?.last_name || 'Фамилия'}
+                    {appointment.patient_details?.first_name || t("main-doctor-patients.name")} {appointment.patient_details?.last_name || t("main-doctor-patients.last_name")}
                 </h3>
                 <p>
-                    {appointment.notes ? `Жалобы: ${appointment.notes}` : 'Жалобы не указаны'}
+                    {appointment.notes ? t('main-doctor-patients.complaints', {notes:appointment.notes}) : t("main-doctor-patients.complaints_not_found")}
                 </p>
                 
                 {/* Дополнительные детали */}
                 <div className="reception-card-details">
                     <span>📞 {appointment.patient_details?.phone || 'нет номера'}</span>
-                    <span>👤 {appointment.patient_details?.age || '?'} лет</span>
-                    <span>🚪 Кабинет: {appointment.room_number || 'не указан'}</span>
+                    <span>👤 {appointment.patient_details?.age || '?'} {t('main-doctor-patients.years_old')}</span>
+                    <span>🚪 Кабинет: {appointment.room_number || t("main-doctor-patients.not_specified")}</span>
                 </div>
             </div>
 
             <Chip 
 				label={
-					appointment.status === 'scheduled' ? 'Ожидает' :
-					appointment.status === 'completed' ? 'Завершён' :
-					appointment.status === 'cancelled' ? 'Отменено' :
-					'Неизвестно'
+					appointment.status === 'scheduled' ? t("main-doctor-patients.wait") :
+					appointment.status === 'completed' ? t("main-doctor-patients.done") :
+					appointment.status === 'cancelled' ? t("main-doctor-patients.cancel") :
+					t("main-doctor-patients.unknown")
 				}
 				color={
 					appointment.status === 'scheduled' ? 'primary' :
@@ -330,11 +367,10 @@ export default function MainDoctorMainPatients() {
             <ColorButton 
 				variant="contained" 
 				size="small"
-				// Кнопка активна, только если статус 'scheduled'
 				disabled={appointment.status !== 'scheduled'}
 				onClick={() => handleStartReception(appointment)}
 			>
-				{appointment.status === 'scheduled' ? 'Принять' : 'Завершён'}
+				{appointment.status === 'scheduled' ? t("main-doctor-patients.accept") : t("main-doctor-patients.done")}
 			</ColorButton>
         </div>
     ))}

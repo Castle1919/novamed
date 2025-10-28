@@ -3,6 +3,7 @@ import Login from "./login";
 import { fetchPatients, fetchMyPatient, getAccessToken, getUserRole, logout } from "./api";
 import { Container, Box, Button, Typography, List, ListItem, ListItemText, Alert } from "@mui/material";
 
+
 function App() {
     const [loggedIn, setLoggedIn] = useState(false);
     const [data, setData] = useState([]);

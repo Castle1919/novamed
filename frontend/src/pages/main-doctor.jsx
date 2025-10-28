@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import logo from '../assets/logo.png';
 import Button from '@mui/material/Button';
 import MenuIcon from '@mui/icons-material/Menu';
-import { IconButton } from '@mui/material';
+import { IconButton, Box } from '@mui/material';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 import RegistrModal from '../components/Registr';
@@ -70,34 +70,40 @@ const handleCloseModalContacts = () => {
 
 return (
 	<>
-		<Toolbar className='header'>
-			<div className='header-left'>
-				<IconButton onClick={handleClick}>
-					<MenuIcon fontSize="large" />
-				</IconButton>
-				<Menu
-					id="basic-menu"
-					anchorEl={anchorEl}
-					open={open}
-					onClose={handleClose}
-				>
-					<NavLink to="/" className='for-navs'><MenuItem onClick={handleClose}>{t('header.main')}</MenuItem></NavLink>
-					<MenuItem onClick={() => { handleServiceClick(); handleClose(); }}>{t('header.services')}</MenuItem>
-					<MenuItem onClick={() => { handleContactsClick(); handleClose(); }}>{t('header.contacts')}</MenuItem>
-				</Menu>
-				<NavLink to="/" className='for-navs nav-link-main-main'>
-					<Typography variant="h6">
-						<img src={logo} className='logo' alt="" />
-					</Typography>
-					<h2 className='logoName'>NovaMed</h2>
-				</NavLink>
-			</div>
-			<LanguageSwitcher />
-			<div className='header-right'>
-				<Button variant="contained" onClick={handleRegistrClick}>{t('header.register')}</Button>
-				<Button variant="outlined" onClick={handleLoginClick}>{t('header.login')}</Button>
-			</div>
-		</Toolbar>
+		<Toolbar>
+    <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+        <IconButton onClick={handleClick}>
+            <MenuIcon fontSize="large" />
+        </IconButton>
+        <Menu
+            id="basic-menu"
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleClose}
+        >
+            <NavLink to="/" className='for-navs'><MenuItem onClick={handleClose}>{t('header.main')}</MenuItem></NavLink>
+            <MenuItem onClick={() => { handleServiceClick(); handleClose(); }}>{t('header.services')}</MenuItem>
+            <MenuItem onClick={() => { handleContactsClick(); handleClose(); }}>{t('header.contacts')}</MenuItem>
+        </Menu>
+        <NavLink to="/" className='for-navs nav-link-main-main'>
+            <Typography variant="h6">
+                <img src={logo} className='logo' alt="" />
+            </Typography>
+            <h2 className='logoName'>NovaMed</h2>
+        </NavLink>
+    </Box>
+
+	<Box sx={{ flexGrow: 3 }} />
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <LanguageSwitcher />
+    </Box>
+
+    <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+        <Button variant="contained" onClick={handleRegistrClick} sx={{ minWidth: '150px' }}>{t('header.register')}</Button>
+        <Button variant="outlined" onClick={handleLoginClick} sx={{ minWidth: '80px' }}>{t('header.login')}</Button>
+    </Box>
+</Toolbar>
+		
 		<div className='mainbox'>
 			<div className='mainbox-left'>
 				<h2>{t('main-doctor.title')}</h2>

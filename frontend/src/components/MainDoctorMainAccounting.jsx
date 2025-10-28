@@ -11,6 +11,7 @@ import axios from '../api/axios';
 import userIcon from '../assets/medicaments1.png';
 import userIcon2 from '../assets/medicaments2.png';
 import MedicineDetailModal from './MedicineDetailModal';
+import { useTranslation } from 'react-i18next';
 
 const ColorButton = styled(Button)(({ theme }) => ({
   color: theme.palette.getContrastText(blue[500]),
@@ -28,9 +29,9 @@ export default function MainDoctorMainAccounting() {
   const [filteredMedicines, setFilteredMedicines] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMedicine, setSelectedMedicine] = useState(null);
+  const { t } = useTranslation();
 
   const handleDetailClick = (med) => {
-    // Для "Склада"
     const medDataForModal = { ...med, medicine_name: med.name };
     setSelectedMedicine(medDataForModal);
     setModalOpen(true);
@@ -81,19 +82,17 @@ export default function MainDoctorMainAccounting() {
     );
   }
 
-
-
   return (
     <div className="patient-history-main">
       <div className="patient-history-input">
-        <h2>Склад препаратов</h2>
+        <h2>{t("medicine-warehouse.title")}</h2>
         <Paper
           component="form"
           sx={{ p: '2px 4px', display: 'flex', alignItems: 'center', width: 250 }}
         >
           <InputBase
             sx={{ ml: 1, flex: 1 }}
-            placeholder="Введите название"
+            placeholder={t("medicine-warehouse.search_placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -102,11 +101,10 @@ export default function MainDoctorMainAccounting() {
           </IconButton>
         </Paper>
       </div>
-
       {filteredMedicines.length === 0 ? (
         <Box sx={{ textAlign: 'center', py: 8, width: '100%' }}>
           <Typography variant="h6" color="text.secondary">
-            {query ? 'Ничего не найдено' : 'На складе нет препаратов'}
+            {query ? t("medicine-warehouse.no_results") : t("medicine-warehouse.empty_warehouse")}
           </Typography>
         </Box>
       ) : (
@@ -116,18 +114,18 @@ export default function MainDoctorMainAccounting() {
               <img src={i % 2 === 0 ? userIcon : userIcon2} alt={med.name} className="patients-history-box-img" />
               <h3>{med.name}</h3>
               <ColorButton variant="contained" onClick={() => handleDetailClick(med)}>
-                Подробнее
+                {t("medicine-warehouse.details_button")}
               </ColorButton>
             </div>
           ))}
         </div>
       )}
       <MedicineDetailModal
-    open={modalOpen}
-    onClose={() => setModalOpen(false)}
-    medicine={selectedMedicine}
-    />
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        medicine={selectedMedicine}
+      />
     </div>
-    
   );
+
 }
