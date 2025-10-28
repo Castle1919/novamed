@@ -1,1 +1,0 @@
-backend: cd backend && gunicorn django_project.wsgi --log-file -
