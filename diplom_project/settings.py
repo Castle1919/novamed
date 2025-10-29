@@ -84,31 +84,22 @@ DATABASES = {
 }
 
 # --- НАСТРОЙКА БАЗЫ ДАННЫХ ---
-import os
-import dj_database_url
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'diplom_db',
-        'USER': 'postgres',
-        'PASSWORD': '1499',
-        'HOST': 'localhost',
-        'PORT': '5432',
+if 'DATABASE_URL' in os.environ:
+    DATABASES = {
+        'default': dj_database_url.config(conn_max_age=600)
     }
-}
-
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(conn_max_age=600)
-    
-    if 'amazonaws.com' in DATABASES['default']['HOST'] or 'supabase.co' in DATABASES['default']['HOST']:
-        DATABASES['default']['OPTIONS'] = {
-            'sslmode': 'require',
-            'host_lookup': 'numeric',
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'diplom_db',
+            'USER': 'postgres',
+            'PASSWORD': '1499',
+            'HOST': 'localhost',
+            'PORT': '5432',
         }
-        DATABASES['default'].pop('sslmode', None)
-        DATABASES['default'].pop('sslrootcert', None)
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
