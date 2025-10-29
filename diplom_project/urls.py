@@ -32,9 +32,8 @@ urlpatterns = [
     path('api/doctors/statistics/', patient_views.DoctorStatisticsView.as_view(), name='doctor_statistics'),
     
     # ===== Medicines =====
-    path('api/medicines/', patient_views.MedicineListView.as_view(), name='medicines_list'),
-    re_path(r'^api/medicines/(?P<pk>[0-9]+)/$', patient_views.MedicineDetailView.as_view(), name='medicines_detail'),
-    
+    path('api/medicines/', patient_views.MedicineListView.as_view(), name='medicines-list'),
+    re_path(r'^api/medicines/(?P<pk>[0-9]+)/$', patient_views.MedicineDetailView.as_view(), name='medicine-detail'),
     # ===== Appointments =====
     path('api/appointments/', patient_views.MyAppointmentsView.as_view(), name='my_appointments'),
     path('api/appointments/create/', patient_views.AppointmentCreateView.as_view(), name='appointment_create'),
