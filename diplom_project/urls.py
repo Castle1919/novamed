@@ -5,6 +5,7 @@ from accounts.views import MyTokenObtainPairView, UserDetailView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 urlpatterns = [
+    path('grappelli/', include('grappelli.urls')),
     path('admin/', admin.site.urls),
 
     # ===== JWT Auth =====
