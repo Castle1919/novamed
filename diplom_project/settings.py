@@ -154,15 +154,16 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# --- НАСТРОЙКИ CORS ---
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
+
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
-
-VERCEL_URL = os.environ.get('VERCEL_URL')
-if VERCEL_URL:
-    CORS_ALLOWED_ORIGINS.append(VERCEL_URL)
-
-CORS_ALLOW_ALL_ORIGINS = False 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://.*\.vercel\.app$",
+]
 
 # --- НАСТРОЙКИ ДЛЯ ОТПРАВКИ EMAIL ЧЕРЕЗ GMAIL ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
