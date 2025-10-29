@@ -84,14 +84,6 @@ DATABASES = {
 }
 
 # --- НАСТРОЙКА БАЗЫ ДАННЫХ ---
-import socket
-
-socket.getaddrinfo = lambda host, port, family=0, type=0, proto=0, flags=0: \
-    socket.original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
-
-if not hasattr(socket, 'original_getaddrinfo'):
-    socket.original_getaddrinfo = socket.getaddrinfo
-    
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -108,19 +100,17 @@ if DATABASE_URL:
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     
-    import dj_database_url
-    db_config = dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+    DATABASES['default'] = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=0,
+        ssl_require=True
+    )
     
-    db_config['OPTIONS'] = {
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+    DATABASES['default']['OPTIONS'] = {
         'sslmode': 'require',
         'connect_timeout': 10,
-        'options': '-c search_path=public',
     }
-    
-    if 'supabase.co' in DATABASE_URL:
-        db_config['OPTIONS']['hostaddr'] = None
-        
-    DATABASES['default'] = db_config
 
 
 
