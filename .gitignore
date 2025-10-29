@@ -27,9 +27,7 @@ MANIFEST
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-/media
-/staticfiles
-/static
+
 
 # Виртуальное окружение
 venv/
@@ -44,22 +42,11 @@ venv.bak/
 # VS Code
 .vscode/
 
-# Environment variables
-.env
-.env.local
-.env.*.local
 
 # React / Node
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-/frontend/build/
-/frontend/dist/
 
-# Production build
-/build
-/dist
+.env
 
 # Dependencies
 package-lock.json
@@ -88,4 +75,3 @@ logs/
 *.tmp
 *.temp
 
-assets/
