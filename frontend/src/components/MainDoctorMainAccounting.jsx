@@ -40,7 +40,7 @@ export default function MainDoctorMainAccounting() {
     const fetchMedicines = async () => {
       try {
         const token = localStorage.getItem('access');
-        const response = await axios.get('/medicines/list/', {
+        const response = await axios.get('/medicines/', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setMedicines(response.data || []);
