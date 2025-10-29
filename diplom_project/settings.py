@@ -84,14 +84,16 @@ DATABASES = {
 }
 
 # --- НАСТРОЙКА БАЗЫ ДАННЫХ ---
+import socket
 
-DATABASES = { 'default': {} }
+socket.getaddrinfo = lambda host, port, family=0, type=0, proto=0, flags=0: \
+    socket.original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
 
-DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(conn_max_age=600)
-else:
-    DATABASES['default'] = {
+if not hasattr(socket, 'original_getaddrinfo'):
+    socket.original_getaddrinfo = socket.getaddrinfo
+    
+DATABASES = {
+    'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'diplom_db',
         'USER': 'postgres',
@@ -99,6 +101,29 @@ else:
         'HOST': 'localhost',
         'PORT': '5432',
     }
+}
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    
+    import dj_database_url
+    db_config = dj_database_url.config(default=DATABASE_URL, conn_max_age=600, ssl_require=True)
+    
+    db_config['OPTIONS'] = {
+        'sslmode': 'require',
+        'connect_timeout': 10,
+        'options': '-c search_path=public',
+    }
+    
+    if 'supabase.co' in DATABASE_URL:
+        db_config['OPTIONS']['hostaddr'] = None
+        
+    DATABASES['default'] = db_config
+
+
+
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
