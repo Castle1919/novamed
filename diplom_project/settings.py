@@ -85,22 +85,20 @@ DATABASES = {
 
 # --- НАСТРОЙКА БАЗЫ ДАННЫХ ---
 
-if 'DATABASE_URL' in os.environ:
-    DATABASES = {
-        'default': dj_database_url.config(conn_max_age=600)
-    }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'diplom_db',
-            'USER': 'postgres',
-            'PASSWORD': '1499',
-            'HOST': 'localhost',
-            'PORT': '5432',
-        }
-    }
+DATABASES = { 'default': {} }
 
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    DATABASES['default'] = dj_database_url.config(conn_max_age=600)
+else:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'diplom_db',
+        'USER': 'postgres',
+        'PASSWORD': '1499',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
     {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
