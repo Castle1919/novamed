@@ -85,7 +85,7 @@ function Registr({ onClose, role = 'patient' }) {
             };
 
             await api.post('/accounts/register/', payload);
-            setSuccessMessage(t('registration.success'));
+            setSuccessMessage(t('registr.registration_success'));
         } catch (err) {
             const errorData = err.response?.data;
             let errorMessage = 'Произошла ошибка при регистрации.';
