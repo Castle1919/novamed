@@ -60,9 +60,9 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 	const { t, i18n } = useTranslation();
 
 	const holidays = [
-		'2024-01-01', '2024-01-02', '2024-01-07', '2024-03-08', '2024-03-21', '2024-03-22', '2024-03-23', '2024-05-01', '2024-05-07', '2024-05-09', '2024-07-06', '2024-08-30', '2024-10-25', '2024-12-16', '2024-12-17', '2025-01-01', '2025-01-02', '2025-01-07', '2025-03-08', '2025-03-21', '2025-03-22', '2025-03-23', '2025-05-01', '2025-05-07', '2025-05-09', '2025-07-06', '2025-08-30', '2025-10-25', '2025-12-16', '2025-12-17',
+		'2025-01-01', '2025-01-02', '2025-01-07', '2025-03-08', '2025-03-21', '2025-03-22', '2025-03-23', '2025-05-01', '2025-05-07', '2025-05-09', '2025-07-06', '2025-08-30', '2025-10-25', '2025-12-16', '2025-12-17',
 	];
-	
+
 	const patientId = appointment?.patient_details?.id;
 
 	useEffect(() => {
@@ -90,7 +90,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 	const loadMedicines = async () => {
 		if (!patientId) return;
 		try {
-			const res = await axios.get('/medicines/list/', { params: { patient_id: patientId } });
+			const res = await axios.get('/medicines/', { params: { patient_id: patientId } });
 			setMedicines(Array.isArray(res.data) ? res.data : []);
 		} catch (e) {
 			console.error('loadMedicines error', e);
@@ -248,7 +248,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 		} catch (e) {
 			const msg = e.response?.data?.message || e.response?.data?.error || 'Ошибка при создании повторного визита';
 			setSnack({ open: true, message: msg, severity: 'error' });
-			return false; // Возвращаем false при ошибке
+			return false;
 		}
 	};
 
@@ -268,7 +268,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 		try {
 			const payload = {
 				patient_id: patientId,
-				active: isActive, // Используем переданное значение
+				active: isActive,
 				medicines: []
 			};
 
@@ -290,6 +290,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 	};
 
 	const completeReception = async () => {
+		// 1. Валидация
 		if (!form.diagnosis.trim()) {
 			setSnack({ open: true, message: 'Диагноз обязателен', severity: 'warning' });
 			return;
@@ -303,18 +304,17 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 		setSaving(true);
 
 		try {
-			// Сначала пытаемся создать повторный визит, если нужно
+			// 2. Сначала пытаемся создать повторный визит, если нужно
 			let followupOK = false;
 			if (needFollowUp) {
 				followupOK = await createFollowUpAppointment();
 				if (!followupOK) {
-					// Если создание повторного визита не удалось, прерываем операцию
-					setSaving(false);
-					return;
+					// Если создание не удалось, прерываем, но сбрасываем saving
+					throw new Error("Не удалось создать повторную запись. Проверьте время.");
 				}
 			}
 
-			// Завершаем основной прием
+			// 3. Завершаем текущий прием
 			const payload = {
 				complaints: form.complaints,
 				anamnesis: form.anamnesis,
@@ -335,28 +335,29 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 			const res = await axios.post(`/appointments/${appointment.id}/complete/`, payload);
 			const mrId = res.data?.medical_record_id;
 
-			// Загружаем файлы, если они есть
+			// 4. Загружаем файлы, если они есть
 			if (mrId && pendingFiles.length > 0) {
 				await uploadPendingFilesSequential(mrId);
 			}
 
-			// Синхронизируем активные препараты
+			// 5. Синхронизируем активные препараты
 			// `followupOK` будет true, только если галочка стояла и визит создался
 			await syncActiveMedicines(followupOK);
 
 			setSnack({ open: true, message: 'Прием успешно завершён!', severity: 'success' });
 
-			// Закрываем модалку через секунду
+			// 6. Плавно закрываем модалку
 			setTimeout(() => {
-				onClose(true); // Вызываем onClose для закрытия и обновления
-			}, 1200);
+				onClose(true); // Вызываем onClose для закрытия и обновления родителя
+			}, 1500); // Немного увеличил время, чтобы точно успеть прочитать сообщение
 
 		} catch (e) {
-			const msg = e?.response?.data?.error || e?.response?.data?.message || 'Ошибка при завершении приема';
+			// Обрабатываем как ошибки от axios, так и наши собственные
+			const msg = e.response?.data?.error || e.message || 'Произошла непредвиденная ошибка';
 			setSnack({ open: true, message: msg, severity: 'error' });
-			setSaving(false); // Сбрасываем saving при ошибке
+			setSaving(false); // Сбрасываем `saving` только при ошибке, чтобы кнопка разблокировалась
 		}
-		// `finally` убран, чтобы `setSaving(false)` не срабатывал до `onClose`
+		// `finally` убран, чтобы кнопка оставалась заблокированной до закрытия окна в случае успеха
 	};
 
 	const AllergyAlert = useMemo(() => {
@@ -473,7 +474,7 @@ export default function PatientReceptionModal({ open, onClose, appointment, onFo
 										value={form.anamnesis} onChange={e => setForm({ ...form, anamnesis: e.target.value })} />
 								</Grid>
 								<Grid item xs={12} md={6}>
-									<TextField label= {t('patient-reception-modal.objective_data')} fullWidth multiline rows={2}
+									<TextField label={t('patient-reception-modal.objective_data')} fullWidth multiline rows={2}
 										value={form.objective_data} onChange={e => setForm({ ...form, objective_data: e.target.value })} />
 								</Grid>
 
