@@ -2,7 +2,15 @@
     "rewrites": [
         {
             "source": "/api/:path*",
-            "destination": "https://novamed-backend-b3623f7bfd03.herokuapp.com/api/:path*"
+            "destination": "https://novamed-backend-b3623f7bfd03.herokuapp.com/api/:path*",
+            "methods": [
+                "GET",
+                "POST",
+                "PATCH",
+                "DELETE",
+                "PUT",
+                "OPTIONS"
+            ]
         }
     ]
 }
