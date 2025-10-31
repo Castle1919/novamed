@@ -1,5 +1,6 @@
-// index.js
-
+import App from './pages/main';
+import ActivationPage from './pages/ActivationPage';
+import ErrorPage from './pages/error-page';
 import React, { Suspense, lazy } from 'react';
 import ReactDOM from 'react-dom/client';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
@@ -19,12 +20,6 @@ const PageLoader = () => (
 );
 
 
-// 1. Статические импорты только для самых первых страниц (логин, активация)
-import App from './pages/main';
-import ActivationPage from './pages/ActivationPage';
-import ErrorPage from './pages/error-page';
-
-// 2. "Ленивые" импорты для всех остальных страниц и их дочерних компонентов
 const MainDoctor = lazy(() => import('./pages/main-doctor'));
 const MainPatient = lazy(() => import('./pages/main-patient'));
 const MainDoctorMain = lazy(() => import('./pages/main-doctor-main'));
@@ -40,7 +35,6 @@ const MainPatientMainDoctors = lazy(() => import('./components/MainPatientMainDo
 const MainPatientMainAllowance = lazy(() => import('./components/MainPatientMainAllowance'));
 const MainPatientMainAppointments = lazy(() => import('./components/MainPatientMainAppointments'));
 
-// 3. Обновленный роутер с использованием Suspense
 const router = createBrowserRouter([
 	{ path: '/', element: <App />, errorElement: <ErrorPage /> },
 	{ path: '/activate/:uid/:token', element: <ActivationPage />, errorElement: <ErrorPage /> },
