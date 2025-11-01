@@ -19,18 +19,16 @@ from patients.sms_service import send_sms
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 from datetime import timedelta
+import os
 
 User = get_user_model()
 
 # --- ФУНКЦИЯ ОТПРАВКИ ПИСЬМА АКТИВАЦИИ ---
 def send_activation_email(user, request):
-    """
-    Формирует и отправляет письмо для активации аккаунта через настроенный EMAIL_BACKEND.
-    """
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
-    frontend_url = 'http://localhost:3000'
+    frontend_url = os.environ.get('VERCEL_URL', 'http://localhost:3000')
     activation_link = f"{frontend_url}/activate/{uid}/{token}"
 
     subject = 'Активация аккаунта в NovaMed'
@@ -38,8 +36,6 @@ def send_activation_email(user, request):
 
 Чтобы активировать ваш аккаунт в NovaMed, перейдите по ссылке:
 {activation_link}
-
-Если вы не регистрировались, просто проигнорируйте это письмо.
 
 С уважением,
 Команда NovaMed
@@ -133,7 +129,7 @@ class ActivateUserView(APIView):
                         user=user, 
                         first_name=user.first_name, 
                         last_name=user.last_name,
-                        birth_date=date(2000, 1, 1), # Заглушка
+                        birth_date=date(2000, 1, 1),
                         gender='M',
                         iin=user.temp_iin or ''.join([str(random.randint(0, 9)) for _ in range(12)])
                     )
@@ -142,7 +138,7 @@ class ActivateUserView(APIView):
                         user=user, 
                         first_name=user.first_name, 
                         last_name=user.last_name,
-                        birth_date=date(1990, 1, 1), # Заглушка
+                        birth_date=date(1990, 1, 1), 
                         iin=''.join([str(random.randint(0, 9)) for _ in range(12)]),
                         specialty=user.temp_specialty or 'Терапевт',
                         experience_years=1
