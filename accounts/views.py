@@ -28,7 +28,10 @@ def send_activation_email(user, request):
     token = default_token_generator.make_token(user)
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     
-    frontend_url = os.environ.get('VERCEL_URL', 'http://localhost:3000')
+    vercel_url_from_env = os.environ.get('VERCEL_URL')
+    print(f"--- DEBUG: VERCEL_URL from environment: {vercel_url_from_env} ---")
+
+    frontend_url = vercel_url_from_env or 'http://localhost:3000'
     activation_link = f"{frontend_url}/activate/{uid}/{token}"
 
     subject = 'Активация аккаунта в NovaMed'
